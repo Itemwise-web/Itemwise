@@ -95,6 +95,7 @@
 
   /* ---- first-run walkthrough: a short bottom sheet that opens each tab in turn ---- */
   const STEPS = [
+    { tab: 'overview', t: 'Overview: your whole picture', b: 'Add your bank, savings, investment and debt balances under Accounts (More on a phone). Then Overview shows net worth and money available. Tap Customize to choose and reorder what it shows.' },
     { tab: 'budgets', t: 'Budgets: start here', b: 'Tap “Show income lines” and add what you earn, then give each category a planned amount. When income minus plans is $0, every dollar has a job.' },
     { tab: 'import', t: 'Import: bring in charges', b: 'Download a CSV from your bank’s website and add it here. Importing the same file twice adds nothing.' },
     { tab: 'review', t: 'Review: decide what’s unclear', b: 'Charges at stores like Walmart or Target can be split by item or filed under one category. Confirm any guessed categories here too.' },

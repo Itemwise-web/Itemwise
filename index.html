@@ -273,7 +273,7 @@ table.prev td.r,table.prev th.r{text-align:right}
   .ln select{grid-column:1 / 2}
   .ln .x,.ln>span:last-child{grid-column:2}
 }
-@media (max-width:420px){.strip small{display:none}}
+@media (max-width:420px){.strip small{display:none}.tabs a{font-size:12px}}
 </style>
 
 <div class="wrap">
@@ -641,7 +641,7 @@ const daysIn=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
 const monthShort=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{month:'short',timeZone:'UTC'});
 const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
-let goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
+let editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
 let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null;
 let view='review',openId=null,draft=null,curMonth=null,imp=null,qText='',delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
@@ -733,7 +733,7 @@ function niceName(desc){
   }
   return n.trim().slice(0,40);
 }
-const VIEWS=[['budgets','Budgets'],['activity','Activity'],['review','Review'],['import','Import'],['rules','Rules'],['data','Data'],['more','More']];
+const VIEWS=[['overview','Overview'],['budgets','Budgets'],['activity','Activity'],['review','Review'],['import','Import'],['accounts','Accounts'],['rules','Rules'],['data','Data'],['more','More']];
 const byDate=(a,b)=>b.date.localeCompare(a.date)||(b.id-a.id);
 let undoSnap=null;
 const snapshot=()=>JSON.stringify(S);
@@ -1066,14 +1066,14 @@ function renderStrip(){
 function renderTabs(){
   const n=lookCount();
   $('#tabs').innerHTML=VIEWS.map(([k,l])=>{
-    const cur=k===view||(k==='more'&&(view==='rules'||view==='data'));
-    const cls=(k==='rules'||k==='data')?' class="only-d"':(k==='more'?' class="only-m"':'');
+    const cur=k===view||(k==='more'&&(view==='rules'||view==='data'||view==='accounts'));
+    const cls=(k==='rules'||k==='data'||k==='accounts')?' class="only-d"':(k==='more'?' class="only-m"':'');
     return `<a href="#${k}"${cls}${cur?' aria-current="page"':''}>${l}${k==='review'&&n?`<span class="count">${n}</span>`:''}</a>`;
   }).join('');
 }
 function render(){
   ensureMonth();renderNotice();renderMonthbar();renderStrip();renderTabs();
-  const fn={review:viewReview,budgets:viewBudgets,activity:viewActivity,import:viewImport,rules:viewRules,data:viewData,more:viewMore}[view]||viewReview;
+  const fn={overview:viewOverview,accounts:viewAccounts,review:viewReview,budgets:viewBudgets,activity:viewActivity,import:viewImport,rules:viewRules,data:viewData,more:viewMore}[view]||viewReview;
   $('#view').innerHTML=fn();
 }
 
@@ -1489,7 +1489,8 @@ function viewRules(){
 }
 
 function viewMore(){
-  return `<div class="stack"><section class="card"><h3>Rules</h3><p class="meta" style="margin:4px 0 10px">Which stores file themselves, which ask you, and your categories.</p><a class="btn" href="#rules">Open rules</a></section>
+  return `<div class="stack"><section class="card"><h3>Accounts and investments</h3><p class="meta" style="margin:4px 0 10px">Bank, savings, investment and debt balances, for net worth and money available.</p><a class="btn" href="#accounts">Open accounts</a></section>
+  <section class="card"><h3>Rules</h3><p class="meta" style="margin:4px 0 10px">Which stores file themselves, which ask you, and your categories.</p><a class="btn" href="#rules">Open rules</a></section>
   <section class="card"><h3>Your data</h3><p class="meta" style="margin:4px 0 10px">Back up or restore your budget.</p><a class="btn" href="#data">Open backup and restore</a></section></div>`;
 }
 function viewData(){
@@ -1498,6 +1499,128 @@ function viewData(){
   <div class="two"><section class="card"><h3>Back up</h3><p class="meta" style="margin:4px 0 10px">Copies all your data as text. Paste it into a note, or into Restore on another device to move your data there.</p><div class="actions"><button class="btn primary" type="button" data-act="copybackup">Copy backup</button></div>${backupText?`<textarea id="backuptext" readonly aria-label="Backup text" style="margin-top:10px">${esc(backupText)}</textarea>`:''}</section>
   <section class="card"><h3>Restore</h3><p class="meta" style="margin:4px 0 10px">Replaces everything here with a backup.</p><textarea id="restoretext" placeholder="Paste backup text" aria-label="Backup text to restore"></textarea><div class="actions"><button class="btn" type="button" data-act="restore">Restore from text</button><input type="file" id="restorefile" accept=".json,.txt,application/json" aria-label="Backup file"></div></section></div>
   <section class="card" style="margin-top:12px"><h3>Start over</h3><p class="meta" style="margin:4px 0 10px">Deletes every charge, rule and budget from this browser. This cannot be undone.</p><div class="actions"><button class="btn danger${wipe?' on':''}" type="button" data-act="wipe">${wipe?'Yes, delete everything':'Delete all my data'}</button>${wipe?'<button class="btn" type="button" data-act="wipecancel">Cancel</button>':''}</div></section>`;
+}
+
+/* ---------- accounts, net worth and dashboards ---------- */
+const KINDS=[['checking','Checking','cash'],['savings','Savings','cash'],['cash','Cash on hand','cash'],['invest','Brokerage or investing','invest'],['retire','Retirement (IRA, 401k)','invest'],['crypto','Crypto','invest'],['property','Home or property','other'],['otherasset','Other asset','other'],['card','Credit card (amount owed)','debt'],['loan','Loan or mortgage (amount owed)','debt']];
+const kindOf=k=>KINDS.find(x=>x[0]===k)||KINDS[0];
+const acctClass=a=>kindOf(a.kind)[2];
+const accts=()=>(S.accts=S.accts||[]);
+function acctTotals(){
+  const by=c=>sum(accts().filter(a=>acctClass(a)===c).map(a=>a.cents||0)),cash=by('cash'),inv=by('invest'),oth=by('other'),debt=by('debt');
+  return {cash,inv,oth,debt,assets:cash+inv+oth,net:cash+inv+oth-debt};
+}
+/* One saved picture of your totals per day, so the net worth chart can show change over time. */
+function recordSnap(){
+  const T=acctTotals(),d=todayISO,snap={d,cash:T.cash,inv:T.inv,oth:T.oth,debt:T.debt};
+  S.snaps=S.snaps||[];const i=S.snaps.findIndex(x=>x.d===d);if(i>=0)S.snaps[i]=snap;else S.snaps.push(snap);
+  S.snaps.sort((a,b)=>a.d.localeCompare(b.d));if(S.snaps.length>800)S.snaps=S.snaps.slice(-800);
+}
+const moneyCell=x=>{let t=String(x==null?'':x).trim();if(!t)return NaN;const neg=/^\(.*\)$/.test(t)||/^-/.test(t);t=t.replace(/[()$,\s-]/g,'');const n=Number(t);return Number.isFinite(n)?Math.round(n*100)*(neg?-1:1):NaN};
+function parseHoldings(text){
+  const rows=parseCSV(text);if(!rows.length)return [];
+  let hi=-1;for(let i=0;i<Math.min(rows.length,12);i++){if(rows[i].some(c=>/^(symbol|ticker)$/i.test(c.trim()))&&rows[i].some(c=>/value|amount|quantity|shares|qty/i.test(c))){hi=i;break}}
+  let ci={sym:0,qty:1,val:2,name:-1};
+  if(hi>=0){const h=rows[hi],f=re=>h.findIndex(c=>re.test(c.trim()));
+    ci={sym:f(/^(symbol|ticker)$/i),name:f(/description|^name$|security/i),qty:f(/quantity|shares|qty/i),val:f(/market value|current value|total value|^value$|^amount$|value/i)};
+    if(ci.sym<0||ci.val<0)return [];}
+  const out=[];rows.slice(hi+1).forEach(r=>{
+    const sym=(r[ci.sym]||'').trim().toUpperCase(),val=moneyCell(r[ci.val]);
+    if(!sym||!(val>0)||/^(TOTAL|TOTALS|ACCOUNT TOTAL|CASH)$/.test(sym)||/^total/i.test(sym))return;
+    const qty=ci.qty>=0?Number(String(r[ci.qty]||'').replace(/[,\s]/g,'')):NaN;
+    out.push({sym:sym.slice(0,12),name:ci.name>=0?(r[ci.name]||'').trim().slice(0,60):'',qty:Number.isFinite(qty)?qty:0,val});
+  });
+  return out;
+}
+function setHoldings(a,list,msg){
+  const snap=snapshot();a.hold=list;a.cents=sum(list.map(h=>h.val));a.auto=list.length>0;a.upd=todayISO;recordSnap();commit();toast(msg||`${list.length} holding${list.length===1?'':'s'} saved. ${a.name} is now ${fmt(a.cents)}.`,snap);
+}
+function viewAccounts(){
+  const T=acctTotals();
+  const groups=[['cash','Cash and bank accounts'],['invest','Investments'],['other','Other assets'],['debt','What you owe']];
+  const kopts=KINDS.map(k=>`<option value="${k[0]}">${esc(k[1])}</option>`).join('');
+  const row=a=>{
+    const isInv=acctClass(a)==='invest',open=holdOpen===a.id,n=(a.hold||[]).length;
+    const amt=editAcct===a.id?`$<input type="number" min="0" step="0.01" id="aedit" data-acctbal="${a.id}" value="${(a.cents||0)/100}" aria-label="${esc(a.name)} balance in dollars">`:(a.auto?`<span class="amt">${fmt(a.cents)}</span>`:`<button class="lim" type="button" data-act="editacct" data-id="${a.id}" aria-label="Edit ${esc(a.name)} balance, now ${fmt(a.cents)}">${fmt(a.cents)}</button>`);
+    const holds=open?`<div class="panel" style="margin:6px 0">
+      ${n?`<table class="prev" style="width:100%"><tr><th>Holding</th><th class="r">Shares</th><th class="r">Value</th><th></th></tr>${a.hold.map((h,i)=>`<tr><td>${esc(h.sym)}${h.name?` <span class="meta">${esc(h.name)}</span>`:''}</td><td class="r">${h.qty?h.qty:''}</td><td class="r">${fmt(h.val)}</td><td class="r"><button class="btn small ghost" type="button" data-act="rmhold" data-id="${a.id}" data-i="${i}" aria-label="Remove ${esc(h.sym)}">×</button></td></tr>`).join('')}</table>`:'<p class="meta">No holdings yet. Add them one at a time, or import the holdings file from your brokerage.</p>'}
+      <div class="incrow" style="flex-wrap:wrap;border-top:0"><input type="text" id="h-sym" placeholder="Symbol" maxlength="12" style="width:90px" aria-label="Symbol"><input type="number" id="h-qty" min="0" step="any" placeholder="Shares" style="width:90px" aria-label="Number of shares"><span>$<input type="number" id="h-val" min="0" step="0.01" placeholder="Value" style="width:110px" aria-label="Value in dollars"></span><button class="btn small primary" type="button" data-act="addhold" data-id="${a.id}">Add holding</button></div>
+      <p class="meta" style="margin:8px 0 4px">Or import a holdings CSV (columns like Symbol, Quantity, Value). This replaces the holdings above.</p>
+      <div class="actions"><input type="file" id="hfile" data-acct="${a.id}" accept=".csv,.txt,text/csv" aria-label="Holdings CSV file"></div>
+      <textarea id="h-csv" placeholder="or paste CSV text here" aria-label="Holdings CSV text" style="min-height:70px"></textarea>
+      <div class="actions"><button class="btn small" type="button" data-act="imphold" data-id="${a.id}">Import pasted text</button><button class="btn small ghost" type="button" data-act="acctholds" data-id="${a.id}">Close</button></div></div>`:'';
+    return `<div class="incrow"><span>${esc(a.name)} <span class="meta">${a.inst?esc(a.inst)+' · ':''}${esc(kindOf(a.kind)[1])} · updated ${fd(a.upd||todayISO)}</span></span><span>${amt}</span></div>
+      <div class="incrow" style="border-top:0;padding-top:0"><span>${isInv?`<button class="btn small" type="button" data-act="acctholds" data-id="${a.id}">${open?'Hide holdings':(n?`Holdings (${n})`:'Add holdings')}</button>`:''}</span><button class="btn small ghost" type="button" data-act="rmacct" data-id="${a.id}" aria-label="Remove ${esc(a.name)}">Remove</button></div>${holds}`;
+  };
+  const cards=groups.map(([c,t])=>{const list=accts().filter(a=>acctClass(a)===c);return list.length?`<section class="card" style="margin-bottom:12px"><h3>${t}</h3>${list.map(row).join('')}</section>`:''}).join('');
+  return `<p class="lede">Enter what you have in each account. Update a balance whenever you like, monthly is plenty. Itemwise does not connect to banks or brokerages yet, so these stay as accurate as you keep them.</p>
+  <section class="card" style="margin-bottom:12px"><div class="two"><div><div class="meta">Assets</div><div class="amt" style="font-size:18px">${fmt(T.assets)}</div></div><div><div class="meta">Owed</div><div class="amt" style="font-size:18px">${fmt(T.debt)}</div></div></div><div style="margin-top:8px"><div class="meta">Net worth</div><div class="amt" style="font-size:22px">${fmt(T.net)}</div></div></section>
+  ${cards||'<section class="card" style="margin-bottom:12px"><p class="meta" style="margin:0">No accounts yet. Add your first one below.</p></section>'}
+  <section class="card"><h3>Add an account</h3><div class="incrow" style="flex-wrap:wrap;border-top:0"><input type="text" id="an-name" maxlength="40" placeholder="Name, like E*TRADE" aria-label="Account name" style="flex:1;min-width:140px"><input type="text" id="an-inst" maxlength="40" placeholder="Bank or broker (optional)" aria-label="Institution" style="flex:1;min-width:140px"></div>
+  <div class="incrow" style="flex-wrap:wrap;border-top:0"><select id="an-kind" aria-label="Account type">${kopts}</select><span>$<input type="number" id="an-bal" min="0" step="0.01" placeholder="Balance" style="width:120px" aria-label="Balance in dollars"></span><button class="btn small primary" type="button" data-act="addacct">Add account</button></div>
+  <p class="meta">For cards and loans, enter the amount you owe as a positive number.</p></section>`;
+}
+
+const bar=(pct,color)=>`<div role="img" aria-label="${Math.round(pct)}%" style="height:8px;border-radius:4px;background:var(--line);overflow:hidden;margin-top:6px"><div style="width:${Math.max(0,Math.min(100,pct))}%;height:100%;background:${color||'var(--accent)'}"></div></div>`;
+const wcard=(t,body)=>`<section class="card" style="margin-bottom:12px"><h3>${t}</h3>${body}</section>`;
+const needAcct=()=>`<p class="meta" style="margin:6px 0 0">Add your accounts first. <a href="#accounts">Open accounts</a></p>`;
+const daysAgo=d=>Math.round((new Date(todayISO+'T12:00:00Z')-new Date(d+'T12:00:00Z'))/864e5);
+const WIDGETS={
+  available:{t:'Money available',d:'Cash on hand and what is free after this month’s plan',r(){
+    const T=acctTotals(),cash=accts().filter(a=>acctClass(a)==='cash');if(!cash.length)return wcard('Money available',needAcct());
+    const st=stats(),left=Math.max(0,plannedSpend(curMonth)-st.inBudgets),free=T.cash-left,old=Math.max(...cash.map(a=>daysAgo(a.upd||todayISO)));
+    return wcard('Money available',`<div class="two"><div><div class="meta">Cash on hand</div><div class="amt" style="font-size:22px">${fmt(T.cash)}</div></div><div><div class="meta">Free after this month’s plan</div><div class="amt" style="font-size:22px">${fmt(free)}</div></div></div><p class="meta" style="margin:8px 0 0">${fmt(left)} of ${monthLabel(curMonth)}’s planned spending is still to go.${old>7?` Balances were last updated ${old} days ago. <a href="#accounts">Update</a>`:''}</p>`)}},
+  networth:{t:'Net worth',d:'Assets minus what you owe, and change since last month',r(){
+    if(!accts().length)return wcard('Net worth',needAcct());
+    const T=acctTotals(),prev=(S.snaps||[]).filter(x=>daysAgo(x.d)>=25).pop(),pn=prev?prev.cash+prev.inv+prev.oth-prev.debt:null;
+    const ch=pn===null?'No earlier balance to compare yet.':`${T.net-pn>=0?'▲':'▼'} ${fmt(Math.abs(T.net-pn))} since ${fd(prev.d)}.`;
+    return wcard('Net worth',`<div class="amt" style="font-size:26px">${fmt(T.net)}</div><div class="two" style="margin-top:8px"><div><div class="meta">Assets</div><div class="amt">${fmt(T.assets)}</div></div><div><div class="meta">Owed</div><div class="amt">${fmt(T.debt)}</div></div></div><p class="meta" style="margin:8px 0 0">${ch}</p>`)}},
+  nwchart:{t:'Net worth over time',d:'A line of your net worth from saved balances',r(){
+    const pts=(S.snaps||[]).slice(-36).map(x=>({d:x.d,v:x.cash+x.inv+x.oth-x.debt}));
+    if(pts.length<2)return wcard('Net worth over time',`<p class="meta" style="margin:6px 0 0">The chart starts once you have saved balances on two different days. Update your accounts now and again.</p>`);
+    const W=320,H=120,P=10,t0=Date.parse(pts[0].d),t1=Date.parse(pts[pts.length-1].d)||t0+1,lo=Math.min(...pts.map(p=>p.v)),hi=Math.max(...pts.map(p=>p.v)),span=Math.max(hi-lo,1);
+    const xy=p=>[P+(Date.parse(p.d)-t0)/Math.max(t1-t0,1)*(W-2*P),H-P-(p.v-lo)/span*(H-2*P)];
+    const line=pts.map(p=>xy(p).map(n=>n.toFixed(1)).join(',')).join(' ');
+    return wcard('Net worth over time',`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Net worth from ${fmt(pts[0].v)} on ${fd(pts[0].d)} to ${fmt(pts[pts.length-1].v)} on ${fd(pts[pts.length-1].d)}"><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${pts.map(p=>{const[x,y]=xy(p);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--accent)"/>`}).join('')}</svg><div class="meta" style="display:flex;justify-content:space-between"><span>${fd(pts[0].d)} · ${fmt(pts[0].v)}</span><span>${fd(pts[pts.length-1].d)} · ${fmt(pts[pts.length-1].v)}</span></div>`)}},
+  allocation:{t:'Where your money is',d:'Cash, investments and other assets as shares of your assets',r(){
+    const T=acctTotals();if(!(T.assets>0))return wcard('Where your money is',needAcct());
+    const seg=[['Cash',T.cash,'var(--ok)'],['Investments',T.inv,'var(--accent)'],['Other assets',T.oth,'var(--neutral)']];
+    return wcard('Where your money is',`<div style="display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--line);margin-top:6px" role="img" aria-label="${seg.map(x=>x[0]+' '+Math.round(x[1]/T.assets*100)+'%').join(', ')}">${seg.map(x=>`<div style="width:${x[1]/T.assets*100}%;background:${x[2]}"></div>`).join('')}</div>${seg.map(x=>`<div class="incrow"><span><i style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${x[2]};margin-right:6px"></i>${x[0]}</span><span>${fmt(x[1])} · ${Math.round(x[1]/T.assets*100)}%</span></div>`).join('')}`)}},
+  investments:{t:'Investments',d:'Total value and each investment account',r(){
+    const list=accts().filter(a=>acctClass(a)==='invest');if(!list.length)return wcard('Investments',`<p class="meta" style="margin:6px 0 0">No investment accounts yet. <a href="#accounts">Add one</a></p>`);
+    const tot=sum(list.map(a=>a.cents||0));
+    return wcard('Investments',`<div class="amt" style="font-size:24px">${fmt(tot)}</div>${list.map(a=>`<div class="incrow"><span>${esc(a.name)} <span class="meta">${esc(kindOf(a.kind)[1])}</span></span><span>${fmt(a.cents)}${tot>0?` · ${Math.round((a.cents||0)/tot*100)}%`:''}</span></div>`).join('')}`)}},
+  holdings:{t:'Top holdings',d:'Your largest positions across investment accounts',r(){
+    const m={};accts().filter(a=>acctClass(a)==='invest').forEach(a=>(a.hold||[]).forEach(h=>{m[h.sym]=(m[h.sym]||0)+h.val}));
+    const list=Object.entries(m).sort((a,b)=>b[1]-a[1]).slice(0,8),tot=sum(Object.values(m));
+    if(!list.length)return wcard('Top holdings',`<p class="meta" style="margin:6px 0 0">Add holdings to an investment account to see them here. <a href="#accounts">Open accounts</a></p>`);
+    return wcard('Top holdings',list.map(([sym,v])=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between"><b>${esc(sym)}</b><span>${fmt(v)} · ${Math.round(v/tot*100)}%</span></div>${bar(v/tot*100)}</div>`).join('')+`<p class="meta" style="margin:8px 0 0">Share of your listed holdings.</p>`)}},
+  debts:{t:'What you owe',d:'Credit cards and loans',r(){
+    const list=accts().filter(a=>acctClass(a)==='debt');if(!list.length)return wcard('What you owe',`<p class="meta" style="margin:6px 0 0">Nothing listed. <a href="#accounts">Add a card or loan</a> if you want it counted.</p>`);
+    return wcard('What you owe',`<div class="amt" style="font-size:22px">${fmt(sum(list.map(a=>a.cents||0)))}</div>${list.map(a=>`<div class="incrow"><span>${esc(a.name)}</span><span>${fmt(a.cents)}</span></div>`).join('')}`)}},
+  income:{t:'Income this month',d:'Planned income against what has arrived',r(){
+    const plan=planFor(curMonth),incs=plan.income||[],planned=sum(incs.map(i=>i.cents)),got=plan.key===curMonth?sum(incs.map(i=>sum((i.rec||[]).map(r=>r.cents)))):0,disp=sum(S.txs.filter(t=>t.date.startsWith(curMonth)&&dispOf(t)>0).map(dispOf));
+    if(!planned&&!disp)return wcard('Income this month',`<p class="meta" style="margin:6px 0 0">Add your income lines on the Budgets tab. <a href="#budgets">Open budgets</a></p>`);
+    return wcard('Income this month',`<div class="two"><div><div class="meta">Planned</div><div class="amt" style="font-size:18px">${fmt(planned)}</div></div><div><div class="meta">Received</div><div class="amt" style="font-size:18px">${fmt(got)}</div></div></div>${bar(planned?got/planned*100:0,'var(--ok)')}<p class="meta" style="margin:6px 0 0">${got>=planned?'All planned income received.':fmt(planned-got)+' still expected.'}${disp?` Plus ${fmt(disp)} of disposable income.`:''}</p>`)}},
+  spending:{t:'Spending this month',d:'Spent against planned spending',r(){
+    const st=stats(),planned=plannedSpend(curMonth),spent=st.inBudgets,over=planned>0&&spent>planned+OVER_SLACK;
+    if(!planned&&!spent)return wcard('Spending this month',`<p class="meta" style="margin:6px 0 0">Nothing planned or spent yet for ${monthLabel(curMonth)}.</p>`);
+    return wcard('Spending this month',`<div class="two"><div><div class="meta">Spent</div><div class="amt" style="font-size:18px">${fmt(spent)}</div></div><div><div class="meta">Planned</div><div class="amt" style="font-size:18px">${fmt(planned)}</div></div></div>${bar(planned?spent/planned*100:100,over?'var(--bad)':'var(--accent)')}<p class="meta" style="margin:6px 0 0">${over?fmt(spent-planned)+' over plan.':fmt(Math.max(planned-spent,0))+' left in the plan.'}</p>`)}},
+  topcats:{t:'Biggest categories',d:'Where this month’s money went',r(){
+    const st=stats(),list=S.cats.filter(c=>groupOf(c)!=='Savings'&&(st.spent[c]||0)>0).map(c=>[c,st.spent[c]]).sort((a,b)=>b[1]-a[1]).slice(0,6),mx=list.length?list[0][1]:1;
+    if(!list.length)return wcard('Biggest categories',`<p class="meta" style="margin:6px 0 0">No spending filed yet for ${monthLabel(curMonth)}.</p>`);
+    return wcard('Biggest categories',list.map(([c,v])=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between"><span>${esc(c)}</span><span>${fmt(v)}</span></div>${bar(v/mx*100)}</div>`).join(''))}},
+  goals:{t:'Goals and saved-up money',d:'Your savings goals and funds that carry over',r(){return goalsCard()||wcard('Goals and saved-up money',`<p class="meta" style="margin:6px 0 0">No goals or saved-up funds yet. Set one from a category on the Budgets tab.</p>`)}}
+};
+const PRESETS={overview:['available','networth','income','spending','goals'],networth:['networth','nwchart','allocation','debts'],investor:['investments','allocation','holdings','nwchart','networth'],budget:['spending','income','topcats','goals','available'],everything:Object.keys(WIDGETS)};
+const PRESET_NAMES={overview:'Overview',networth:'Net worth',investor:'Investor',budget:'Budget focus',everything:'Everything'};
+const dashList=()=>((S.dash&&Array.isArray(S.dash.list))?S.dash.list:PRESETS.overview).filter(id=>WIDGETS[id]);
+function viewOverview(){
+  const list=dashList(),cur=(S.dash&&S.dash.preset)||'overview';
+  const presetBtns=Object.keys(PRESETS).map(k=>`<button class="btn small${cur===k?' primary':''}" type="button" data-act="dashpreset" data-p="${k}" aria-pressed="${cur===k}">${PRESET_NAMES[k]}</button>`).join('');
+  const editor=dashEdit?`<section class="card" style="margin-bottom:12px"><h3>Customize your dashboard</h3><p class="meta" style="margin:4px 0 8px">Turn widgets on or off and move the ones you keep. Pick a ready-made set above to start over.</p>${list.map((id,i)=>`<div class="incrow"><span>${esc(WIDGETS[id].t)}<br><span class="meta">${esc(WIDGETS[id].d)}</span></span><span><button class="btn small ghost" type="button" data-act="dashup" data-w="${id}"${i?'':' disabled'} aria-label="Move ${esc(WIDGETS[id].t)} up">▲</button> <button class="btn small ghost" type="button" data-act="dashdown" data-w="${id}"${i<list.length-1?'':' disabled'} aria-label="Move ${esc(WIDGETS[id].t)} down">▼</button> <button class="btn small" type="button" data-act="dashtog" data-w="${id}">Hide</button></span></div>`).join('')}
+    ${Object.keys(WIDGETS).filter(id=>!list.includes(id)).length?`<div class="meta" style="margin:10px 0 4px">Not shown</div>${Object.keys(WIDGETS).filter(id=>!list.includes(id)).map(id=>`<div class="incrow"><span>${esc(WIDGETS[id].t)}<br><span class="meta">${esc(WIDGETS[id].d)}</span></span><button class="btn small primary" type="button" data-act="dashtog" data-w="${id}">Show</button></div>`).join('')}`:''}</section>`:'';
+  return `<div class="actions" style="margin-bottom:12px">${presetBtns}<button class="btn small${dashEdit?' primary':' ghost'}" type="button" data-act="dashedit">${dashEdit?'Done':'Customize'}</button></div>${editor}${list.map(id=>WIDGETS[id].r()).join('')||'<p class="meta">No widgets shown. Use Customize to add some.</p>'}`;
 }
 
 /* ---------- events ---------- */
@@ -1594,6 +1717,21 @@ document.addEventListener('click',e=>{
     case 'extrainc':{const t=S.txs.find(x=>x.id===+b.dataset.id);if(!t||!(t.cents<0))break;const m=t.date.slice(0,7);if(!(planFor(m).disp>0)){dispAsk={id:t.id,m};if(view!=='review'&&view!=='budgets')location.hash='review';render();{const i=$('#dispamt');if(i){i.focus()}}toast('How much disposable income do you expect this month?');break}
       applyDeposit(t.id,[{cat:DISP,cents:-t.cents}]);break}
     case 'unextra':{const t=S.txs.find(x=>x.id===+b.dataset.id);if(!t)break;const snap=snapshot();t.extra=false;commit();toast('Moved back to money in.',snap);break}
+    case 'addacct':{const nm=($('#an-name').value||'').trim().slice(0,40);if(!nm){toast('Give the account a name.');break}
+      const bal=$('#an-bal').value===''?0:parseMoney($('#an-bal').value);if(Number.isNaN(bal)||bal<0){toast('Enter the balance in dollars, like 2500.');break}
+      const snap=snapshot();accts().push({id:++S.seq,name:nm,inst:($('#an-inst').value||'').trim().slice(0,40),kind:$('#an-kind').value,cents:bal,upd:todayISO,hold:[]});recordSnap();commit();toast(`${nm} added.`,snap);break}
+    case 'editacct':editAcct=id;render();{const i=$('#aedit');if(i){i.focus();i.select()}}break;
+    case 'rmacct':{const snap=snapshot(),a=accts().find(x=>x.id===id);if(!a)break;S.accts=accts().filter(x=>x.id!==id);if(holdOpen===id)holdOpen=null;recordSnap();commit();toast(`${a.name} removed.`,snap);break}
+    case 'acctholds':holdOpen=holdOpen===id?null:id;render();break;
+    case 'addhold':{const a=accts().find(x=>x.id===id);if(!a)break;const sym=($('#h-sym').value||'').trim().toUpperCase().slice(0,12),val=parseMoney($('#h-val').value),q=Number($('#h-qty').value);
+      if(!sym||!(val>0)){toast('Enter a symbol and the value in dollars.');break}
+      setHoldings(a,(a.hold||[]).concat([{sym,name:'',qty:Number.isFinite(q)?q:0,val}]),`${sym} added. ${a.name} is now `+fmt(sum((a.hold||[]).map(h=>h.val))+val)+'.');break}
+    case 'rmhold':{const a=accts().find(x=>x.id===id);if(!a)break;const snap=snapshot(),l=(a.hold||[]).slice();l.splice(+b.dataset.i,1);a.hold=l;if(l.length){a.cents=sum(l.map(h=>h.val))}else a.auto=false;a.upd=todayISO;recordSnap();commit();toast('Holding removed.',snap);break}
+    case 'imphold':{const a=accts().find(x=>x.id===id);if(!a)break;const l=parseHoldings($('#h-csv').value||'');if(!l.length){toast('No holdings found. The file needs Symbol and Value columns.');break}setHoldings(a,l);break}
+    case 'dashedit':dashEdit=!dashEdit;render();break;
+    case 'dashpreset':S.dash={preset:b.dataset.p,list:PRESETS[b.dataset.p].slice()};commit();break;
+    case 'dashtog':{const l=dashList().slice(),w=b.dataset.w,i=l.indexOf(w);if(i>=0)l.splice(i,1);else l.push(w);S.dash={preset:'custom',list:l};commit();break}
+    case 'dashup':case 'dashdown':{const l=dashList().slice(),w=b.dataset.w,i=l.indexOf(w),j=a==='dashup'?i-1:i+1;if(i<0||j<0||j>=l.length)break;[l[i],l[j]]=[l[j],l[i]];S.dash={preset:'custom',list:l};commit();break}
     case 'tbl':showTbl=!showTbl;render();break;
     case 'afilter':actFilter=b.dataset.f;render();break;
     case 'menu':menuId=(menuId===id?null:id);render();break;
@@ -1662,6 +1800,8 @@ document.addEventListener('pointermove',e=>{
 });
 document.addEventListener('change',e=>{
   const el=e.target,id=el.id,d=el.dataset;
+  if(d.acctbal!==undefined){const a=accts().find(x=>x.id===+d.acctbal),v=parseMoney(el.value);if(a&&!Number.isNaN(v)&&v>=0){const snap=snapshot();a.cents=v;a.upd=todayISO;editAcct=null;recordSnap();commit();toast(`${a.name} is now ${fmt(v)}.`,snap)}return}
+  if(id==='hfile'){const f=el.files&&el.files[0],a=accts().find(x=>x.id===+d.acct);if(!f||!a)return;const r=new FileReader();r.onload=()=>{const l=parseHoldings(String(r.result));if(!l.length){toast('No holdings found. The file needs Symbol and Value columns.');return}setHoldings(a,l)};r.onerror=()=>toast('That file could not be read.');r.readAsText(f);return}
   if(d.rollbase!==undefined){const v=el.value===''?0:parseMoney(el.value);if(!Number.isNaN(v)&&v>=0){S.track=S.track||{};const tr=S.track[d.rollbase];if(tr&&tr.roll){tr.rollBase=v;commit();toast(v>0?`Starting balance for ${d.rollbase} set to ${fmt(v)}.`:'Starting balance cleared.')}}return}
   if(d.cmove!==undefined){normGroups();const from=S.groups.find(g=>g.cats.includes(d.cmove)),to=S.groups.find(g=>g.name===el.value);if(from&&to&&from!==to){from.cats=from.cats.filter(c=>c!==d.cmove);to.cats.push(d.cmove);S.groups=S.groups.filter(g=>g.cats.length);commit();toast(`${d.cmove} moved to ${el.value}.`)}return}
   if(d.dsc!==undefined&&dsplit){dsplit.rows[+d.dsc].cat=el.value;render();return}
@@ -1699,7 +1839,7 @@ document.addEventListener('change',e=>{
 });
 function route(){
   const h=location.hash.slice(1);
-  view=VIEWS.some(v=>v[0]===h)?h:(S.txs.length?'budgets':'review');
+  view=VIEWS.some(v=>v[0]===h)?h:((S.txs.length||(S.accts&&S.accts.length))?'overview':'review');
   closeEditor();delId=null;wipe=false;render();
   if(pend){
     const p=pend;pend=null;const t=find(p.id);
