@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Itemwise admin</title><meta name="robots" content="noindex">
+<style>body{font:15px/1.4 system-ui,sans-serif;background:#0f1419;color:#e8ecf1;margin:0;padding:20px;max-width:760px;margin:auto}
+input,button{font:inherit;padding:8px;border-radius:6px;border:1px solid #3a4452;background:#1a212b;color:#e8ecf1}button{cursor:pointer;background:#4f8cff;border:0;color:#fff}
+table{width:100%;border-collapse:collapse}td,th{padding:8px 4px;border-bottom:1px solid #26303d;text-align:left}small{color:#9aa6b5}</style>
+<script src="config.js"></script><script src="vendor/supabase.js"></script></head><body>
+<h1>Who can use receipt photos</h1><div id="m"></div><div id="t"></div>
+<script>
+const cfg=window.ITEMWISE_CONFIG,sb=window.supabase.createClient(cfg.SUPABASE_URL,cfg.SUPABASE_ANON_KEY);
+const m=document.getElementById('m'),t=document.getElementById('t'),esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function load(){
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){m.innerHTML='<p>Sign in on the main Itemwise page first, then reload this page.</p>';return}
+  const {data,error}=await sb.from('profiles').select('id,email,is_admin,ai_enabled,ai_monthly_cap,created_at').order('created_at');
+  const me=(data||[]).find(p=>p.id===session.user.id);
+  if(error||!me||!me.is_admin){m.innerHTML='<p>This page is only for the admin account.</p>';return}
+  m.innerHTML='<p><small>Receipt reading is off for new accounts until you turn it on here. Each photo read costs you money, so the monthly limit is a safety stop.</small></p>';
+  t.innerHTML='<table><tr><th>Email</th><th>Photo reading</th><th>Per month</th><th></th></tr>'+data.map(p=>'<tr><td>'+esc(p.email||'')+(p.is_admin?' <small>(admin)</small>':'')+'</td><td><input type="checkbox" data-id="'+p.id+'" class="on" '+(p.ai_enabled?'checked':'')+'></td><td><input type="number" min="0" max="500" value="'+p.ai_monthly_cap+'" data-id="'+p.id+'" class="cap" style="width:80px"></td><td><button data-id="'+p.id+'" class="save">Save</button></td></tr>').join('')+'</table>';
+  t.querySelectorAll('.save').forEach(b=>b.onclick=async()=>{
+    const id=b.dataset.id,on=t.querySelector('.on[data-id="'+id+'"]').checked,cap=Math.max(0,Math.min(500,+t.querySelector('.cap[data-id="'+id+'"]').value||0));
+    const r=await sb.from('profiles').update({ai_enabled:on,ai_monthly_cap:cap}).eq('id',id);b.textContent=r.error?'Failed':'Saved'});
+}
+load();
+</script></body></html>
