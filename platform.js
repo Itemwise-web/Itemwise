@@ -20,7 +20,8 @@
   const btn = 'width:100%;padding:12px;margin:8px 0;border-radius:8px;border:0;background:#4f8cff;color:#fff;font-size:16px;font-weight:600;cursor:pointer';
   const link = 'background:none;border:0;color:#8fb4ff;cursor:pointer;font-size:14px;padding:6px 0;text-decoration:underline';
 
-  function showAuth(mode, msg) {
+  const here = () => location.origin + location.pathname;
+  function showAuth(mode, msg, resendFor) {
     const sign = mode === 'in';
     const o = overlay(
       '<h1 style="font-size:24px;margin:0 0 4px">Itemwise</h1>' +
@@ -30,6 +31,7 @@
       '<input id="iw-pw" type="password" autocomplete="' + (sign ? 'current-password' : 'new-password') + '" placeholder="Password' + (sign ? '' : ' (at least 10 characters)') + '" style="' + inp + '">' +
       '<button id="iw-go" style="' + btn + '">' + (sign ? 'Sign in' : 'Create account') + '</button>' +
       '<div><button id="iw-sw" style="' + link + '">' + (sign ? 'New here? Create an account' : 'Have an account? Sign in') + '</button></div>' +
+      (resendFor ? '<div><button id="iw-rs" style="' + btn + '">Resend confirmation email</button></div>' : '') +
       (sign ? '<div><button id="iw-fp" style="' + link + '">Forgot password</button></div>' : ''));
     const em = o.querySelector('#iw-em'), pw = o.querySelector('#iw-pw');
     const go = async () => {
@@ -37,17 +39,25 @@
       if (!email || !password) return showAuth(mode, 'Enter your email and password.');
       if (!sign && password.length < 10) return showAuth(mode, 'Use at least 10 characters for your password.');
       o.querySelector('#iw-go').disabled = true;
-      const r = sign ? await sb.auth.signInWithPassword({ email, password }) : await sb.auth.signUp({ email, password });
-      if (r.error) return showAuth(mode, sign ? 'That email and password did not match.' : r.error.message);
+      const r = sign ? await sb.auth.signInWithPassword({ email, password }) : await sb.auth.signUp({ email, password, options: { emailRedirectTo: here() } });
+      if (r.error) {
+        if (sign && (r.error.code === 'email_not_confirmed' || /not confirmed/i.test(r.error.message || ''))) return showAuth('in', 'Your email is not confirmed yet. Use the newest email from us, or send a new one.', email);
+        return showAuth(mode, sign ? 'That email and password did not match.' : r.error.message);
+      }
       if (!sign && !r.data.session) return showAuth('in', 'Account created. Check your email to confirm it, then sign in.');
     };
     o.querySelector('#iw-go').onclick = go;
     pw.onkeydown = e => { if (e.key === 'Enter') go(); };
     o.querySelector('#iw-sw').onclick = () => showAuth(sign ? 'up' : 'in');
+    const rs = o.querySelector('#iw-rs');
+    if (rs) rs.onclick = async () => {
+      const r = await sb.auth.resend({ type: 'signup', email: resendFor, options: { emailRedirectTo: here() } });
+      showAuth('in', r.error ? 'Could not send it just now. Wait a minute and try again.' : 'Sent. Open the newest email (check spam) and click its link.');
+    };
     const fp = o.querySelector('#iw-fp');
     if (fp) fp.onclick = async () => {
       const email = em.value.trim(); if (!email) return showAuth('in', 'Type your email first, then tap Forgot password.');
-      await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      await sb.auth.resetPasswordForEmail(email, { redirectTo: here() });
       showAuth('in', 'If that email has an account, a reset link is on its way.');
     };
   }
@@ -203,7 +213,8 @@
       if (ev === 'TOKEN_REFRESHED' && s) session = s;
       if (ev === 'SIGNED_OUT') { session = null; }
     });
-    sb.auth.getSession().then(r => { const s = r.data && r.data.session; if (s && !recovering) done(s); else if (!recovering) showAuth('in'); });
+    const linkErr = /error_code=(otp_expired|access_denied)/.test(location.hash) ? 'That email link expired or was already used. Sign in below. If it says your email is not confirmed, tap Resend.' : '';
+    sb.auth.getSession().then(r => { const s = r.data && r.data.session; if (s && !recovering) done(s); else if (!recovering) showAuth('in', linkErr); });
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start); else start();
 })();
