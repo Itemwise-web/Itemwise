@@ -1548,6 +1548,26 @@ function bankCents(a){
   return Math.max(0,Math.round((Number(v)||0)*100));
 }
 /* Bring one bank connection's accounts, holdings and new charges into the budget. Posted charges only; each is filed by your rules like an import. */
+function defaultBankFrom(){
+  const mine=S.txs.filter(t=>t.src!=='bank').map(t=>t.date).sort(),last=mine.length?mine[mine.length-1]:null;
+  const d=new Date((last||todayISO)+'T12:00:00Z');d.setUTCDate(d.getUTCDate()-(last?7:45));return d.toISOString().slice(0,10);
+}
+/* Undo a bad bank import: drop bank charges you have not decided on, drop bank charges that repeat one you already had, and set where to start from. */
+function cleanBankImport(from){
+  const snap=snapshot(),dayDiff=(x,y)=>Math.abs((Date.parse(x+'T12:00:00Z')-Date.parse(y+'T12:00:00Z'))/864e5);
+  let undecided=0,dupes=0;
+  const keep=[];
+  S.txs.forEach(t=>{if(t.src==='bank'&&!t.manual){undecided++}else keep.push(t)});
+  const orig=keep.filter(t=>t.src!=='bank'&&!t.pid),used=new Set(),out=[];
+  keep.forEach(t=>{
+    if(t.src==='bank'){const m=orig.find(o=>!used.has(o.id)&&o.cents===t.cents&&dayDiff(o.date,t.date)<=3);if(m){used.add(m.id);m.pid=t.pid;m.acct=t.acct;dupes++;return}}
+    out.push(t);
+  });
+  S.txs=out;if(from)S.bankFrom=from;
+  commit();toast(`Cleaned up: ${undecided} undecided bank charge${undecided===1?'':'s'} and ${dupes} repeat${dupes===1?'':'s'} removed. Syncing from ${fd(S.bankFrom)}.`,snap);
+  return {undecided,dupes};
+}
+window.iwCleanBank=cleanBankImport;
 function applyBank(p){
   const sum0={accounts:0,added:0,review:0,modified:0,removed:0,matched:0};
   accts();
@@ -1563,7 +1583,8 @@ function applyBank(p){
   });
   const acctOf={};S.accts.forEach(a=>{if(a.pl)acctOf[a.pl]=a});
   const have=new Set(S.txs.map(t=>t.pid).filter(Boolean)),gone=new Set((S.dismissed||[]).map(t=>t.pid).filter(Boolean));
-  const rows=(p.added||[]).filter(t=>!t.pending&&t.date&&Number.isFinite(t.amount)&&!have.has(t.transaction_id)&&!gone.has(t.transaction_id)).map(t=>({date:t.date,desc:String(t.name||'Bank charge').slice(0,80),cents:Math.round(t.amount*100),pid:t.transaction_id,acct:t.account_id}));
+  if(!S.bankFrom)S.bankFrom=defaultBankFrom();
+  const rows=(p.added||[]).filter(t=>!t.pending&&t.date&&t.date>=S.bankFrom&&Number.isFinite(t.amount)&&!have.has(t.transaction_id)&&!gone.has(t.transaction_id)).map(t=>({date:t.date,desc:String(t.name||'Bank charge').slice(0,80),cents:Math.round(t.amount*100),pid:t.transaction_id,acct:t.account_id}));
   const dd=dedupe(rows,S.txs.concat(S.dismissed||[]));
   const dayDiff=(x,y)=>Math.abs((Date.parse(x+'T12:00:00Z')-Date.parse(y+'T12:00:00Z'))/864e5);
   const mine=S.txs.filter(t=>t.entered),usedE=new Set(),fresh2=[];
@@ -1571,7 +1592,10 @@ function applyBank(p){
     const m=mine.find(t=>!usedE.has(t.id)&&t.cents===r.cents&&dayDiff(t.date,r.date)<=4);
     if(m){usedE.add(m.id);m.desc=r.desc;m.date=r.date;m.pid=r.pid;m.acct=r.acct;delete m.entered;if(!m.manual)Object.assign(m,evaluateTx(m,S));sum0.matched++}else fresh2.push(r);
   });
-  const added=fresh2.map(r=>{const t={id:++S.seq,date:r.date,desc:r.desc,cents:r.cents,manual:false,pid:r.pid,acct:r.acct,src:'bank'};Object.assign(t,evaluateTx(t,S));S.txs.push(t);return t});
+  /* The bank names a charge differently than a file does ("Chick-fil-A" vs "CHICK-FIL-A #0412"). The same amount within 3 days of a charge you already have is that charge. */
+  const near=S.txs.filter(t=>!t.pid&&t.src!=='bank'),usedN=new Set(),fresh3=[];
+  fresh2.forEach(r=>{const m=near.find(t=>!usedN.has(t.id)&&t.cents===r.cents&&dayDiff(t.date,r.date)<=3);if(m){usedN.add(m.id);m.pid=r.pid;m.acct=r.acct;sum0.matched++}else fresh3.push(r)});
+  const added=fresh3.map(r=>{const t={id:++S.seq,date:r.date,desc:r.desc,cents:r.cents,manual:false,pid:r.pid,acct:r.acct,src:'bank'};Object.assign(t,evaluateTx(t,S));S.txs.push(t);return t});
   /* a charge already imported from a file counts as seen, so the same one is not added again later */
   dd.skipped.forEach(r=>{const x=S.txs.find(t=>!t.pid&&t.date===r.date&&t.cents===r.cents&&normKey(t.desc)===normKey(r.desc));if(x){x.pid=r.pid;x.acct=r.acct}});
   sum0.added=added.length;sum0.review=added.filter(t=>t.status==='review').length;
@@ -1596,6 +1620,8 @@ function bankCard(){
     const full=st.mine>=st.cap;
     body=`<p class="meta" style="margin:4px 0 8px">You can connect ${st.cap} bank login${st.cap===1?'':'s'} (${st.mine} used). Balances, investment holdings and new charges come in on their own, and your rules and receipt tools work on them as usual.</p>${items}
       <div class="actions" style="margin-top:8px"><button class="btn small primary" type="button" data-act="bankconnect" data-mode="bank"${(full||busy)?' disabled':''}>Connect a bank or card</button><button class="btn small" type="button" data-act="bankconnect" data-mode="invest"${(full||busy)?' disabled':''}>Connect an investment account</button>${(st.items||[]).length?`<button class="btn small" type="button" data-act="banksync"${busy?' disabled':''}>${busy?'Working…':'Sync now'}</button>`:''}</div>
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)"><div class="incrow" style="flex-wrap:wrap;border-top:0"><span>Bring in charges from <input type="date" id="bank-from" value="${esc(S.bankFrom||defaultBankFrom())}" aria-label="Start date for bank charges"> onward</span><span><button class="btn small" type="button" data-act="bankfrom">Save date</button></span></div>
+      <p class="meta" style="margin:2px 0 6px">Charges before that date are skipped. If too much came in, clean up and start again from this date.</p><button class="btn small ghost" type="button" data-act="bankclean"${busy?' disabled':''}>Clean up the bank import and re-sync</button></div>
       ${full?'<p class="meta" style="margin:6px 0 0">You have used all your connections.</p>':''}${st.last?`<p class="meta" style="margin:6px 0 0">Last synced ${esc(st.last)}.</p>`:''}`;
   }
   return `<section class="card" style="margin-bottom:12px"><h3>Bank connections</h3>${body}${st.error?`<div class="status bad" style="margin-top:8px">${esc(st.error)}${st.reconnect?` <button class="btn small" type="button" data-act="bankreconnect" data-item="${esc(st.reconnect)}">Reconnect</button>`:''}</div>`:''}<p class="meta" style="margin:8px 0 0">Plaid shares only balances, holdings and charges. Your bank password never reaches Itemwise.</p></section>`;
@@ -1796,6 +1822,8 @@ document.addEventListener('click',e=>{
     case 'bankconnect':if(window.iwBank)window.iwBank.connect(b.dataset.mode);break;
     case 'banksync':if(window.iwBank)window.iwBank.sync();break;
     case 'bankreconnect':if(window.iwBank)window.iwBank.reconnect(b.dataset.item);break;
+    case 'bankfrom':{const v=($('#bank-from').value||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast('Pick a date.');break}S.bankFrom=v;commit();toast(`Bank charges will come in from ${fd(v)} onward.`);break}
+    case 'bankclean':{const v=($('#bank-from').value||'').trim();if(!/^\d{4}-\d{2}-\d{2}$/.test(v)){toast('Pick a date first.');break}cleanBankImport(v);if(window.iwBank&&window.iwBank.resync)window.iwBank.resync();break}
     case 'bankdel':bankDel=b.dataset.item;render();break;
     case 'bankdelno':bankDel=null;render();break;
     case 'bankdelyes':{const it=b.dataset.item;bankDel=null;if(window.iwBank)window.iwBank.remove(it);break}

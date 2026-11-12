@@ -369,12 +369,12 @@
     if (window.Plaid) return Promise.resolve();
     return new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'; s.onload = res; s.onerror = () => rej(new Error('load')); document.head.appendChild(s); });
   }
-  async function bankSync(auto) {
+  async function bankSync(auto, reset) {
     if (bankState.busy) return; bankState.busy = true; bankState.error = ''; bankState.reconnect = ''; bankTell();
     let added = 0, review = 0, accounts = 0, pend = false;
     for (const it of bankState.items.slice()) {
       for (let page = 0; page < 6; page++) {
-        const r = await bankCall('sync', { item_id: it.item_id });
+        const r = await bankCall('sync', Object.assign({ item_id: it.item_id }, (reset && page === 0) ? { reset: true } : {}));
         if (!r.ok) { bankFail(r, it.item_id); break; }
         let sm = { added: 0, review: 0, accounts: 0 };
         try { sm = (window.iwApplyBank && window.iwApplyBank(r.data)) || sm; } catch (e) { bankState.error = 'Could not add the bank data. Nothing was lost; try again.'; break; }
@@ -414,6 +414,7 @@
       await bankOpen(r.data.link_token, async () => { bankState.busy = false; await bankSync(false); });
     },
     async sync() { await bankSync(false); },
+    async resync() { await bankSync(false, true); },
     async remove(itemId) {
       bankState.error = ''; const r = await bankCall('remove', { item_id: itemId });
       if (!r.ok) bankFail(r); else { await bankRefresh(); if (window.toast) window.toast('Connection removed.'); }
