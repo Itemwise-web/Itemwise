@@ -79,8 +79,9 @@
     if (document.getElementById('iw-chip') || !session) return;
     const d = document.createElement('div'); d.id = 'iw-chip';
     d.style.cssText = 'text-align:center;font-size:12px;color:#8a95a5;padding:18px 12px calc(18px + env(safe-area-inset-bottom,0px))';
-    d.innerHTML = esc(session.user.email || '') + (hh.unavailable ? '' : ' · <button id="iw-hhb" style="' + link + ';font-size:12px">' + (hh.role === 'member' ? 'Shared budget' : 'Household') + '</button>') + ' · <button id="iw-how" style="' + link + ';font-size:12px">How it works</button> · <button id="iw-out" style="' + link + ';font-size:12px">Sign out</button>';
+    d.innerHTML = esc(session.user.email || '') + ' · <button id="iw-rf" style="' + link + ';font-size:12px">Refresh</button>' + (hh.unavailable ? '' : ' · <button id="iw-hhb" style="' + link + ';font-size:12px">' + (hh.role === 'member' ? 'Shared budget' : 'Household') + '</button>') + ' · <button id="iw-how" style="' + link + ';font-size:12px">How it works</button> · <button id="iw-out" style="' + link + ';font-size:12px">Sign out</button>';
     d.querySelector('#iw-how').onclick = () => walkthrough(true);
+    d.querySelector('#iw-rf').onclick = refreshNow;
     const hb = d.querySelector('#iw-hhb'); if (hb) hb.onclick = () => showHousehold();
     d.querySelector('#iw-out').onclick = async () => {
       if (!confirm('Sign out? Anything not yet synced on this device will be removed from it.')) return;
@@ -208,10 +209,165 @@
     o.querySelectorAll('[data-rm]').forEach(b => b.onclick = async () => { if (!confirm('Remove this person from your budget? They keep their own account.')) return; const r = await sb.rpc('remove_member', { p_member: b.dataset.rm }); again(r.error ? 'Could not remove them just now.' : 'Removed.'); });
   }
 
-  async function done(s) {
-    session = s; hh = await fetchHH(); dataUid = budgetUid(hh, s);
-    const o = document.getElementById('iw-auth'); if (o) o.remove(); chip(); resolveReady(s); setTimeout(() => walkthrough(false), 600);
+
+  /* ---- settings: appearance, layout, refresh, account ---- */
+  const DEFAULT_PREFS = { theme: 'auto', accent: 'blue', density: 'comfortable', size: 'normal', width: 'standard' };
+  const ACCENTS = { blue: 'Blue', green: 'Green', purple: 'Purple', orange: 'Orange' };
+  const PREF_CSS = `
+:root[data-accent="green"]{--accent:#1B7A4B;--accent-soft:#DFF2E7}
+:root[data-accent="purple"]{--accent:#6B46C1;--accent-soft:#EDE7FA}
+:root[data-accent="orange"]{--accent:#B45309;--accent-soft:#FBEBD5}
+@media (prefers-color-scheme:dark){
+:root[data-accent="green"]:not([data-theme="light"]){--accent:#6FD39D;--accent-soft:#14301F;--accent-ink:#0B1330}
+:root[data-accent="purple"]:not([data-theme="light"]){--accent:#B79CFF;--accent-soft:#2A2145;--accent-ink:#150C30}
+:root[data-accent="orange"]:not([data-theme="light"]){--accent:#F0B35A;--accent-soft:#33270F;--accent-ink:#2A1A00}
+}
+:root[data-theme="dark"][data-accent="green"]{--accent:#6FD39D;--accent-soft:#14301F;--accent-ink:#0B1330}
+:root[data-theme="dark"][data-accent="purple"]{--accent:#B79CFF;--accent-soft:#2A2145;--accent-ink:#150C30}
+:root[data-theme="dark"][data-accent="orange"]{--accent:#F0B35A;--accent-soft:#33270F;--accent-ink:#2A1A00}
+:root[data-density="compact"] body{font-size:14px;line-height:1.4}
+:root[data-density="compact"] .card{padding:11px}
+:root[data-density="compact"] .wrap{padding-block-start:10px}
+:root[data-density="compact"] .incrow{padding:3px 0}
+:root[data-density="compact"] .tabs{margin-bottom:12px}
+:root[data-size="large"] .wrap{zoom:1.15}
+:root[data-width="wide"] .wrap{max-width:1280px}
+#iw-gear{width:44px;height:44px;border-radius:50%;border:1px solid var(--line,#3a4452);background:var(--surface,#1a212b);color:var(--ink,#e8ecf1);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0;flex:none}
+#iw-gear:focus-visible{outline:2px solid var(--accent,#4f8cff);outline-offset:2px}
+#iw-ptr{position:fixed;left:50%;top:calc(8px + env(safe-area-inset-top,0px));transform:translate(-50%,-70px);z-index:99997;background:var(--ink,#e8ecf1);color:var(--bg,#0f1419);padding:8px 14px;border-radius:999px;font:600 13px Inter,system-ui,sans-serif;transition:transform .15s}
+`;
+  let prefs = Object.assign({}, DEFAULT_PREFS), prefTimer = null;
+  function loadPrefs(s) {
+    let p = {};
+    try { p = JSON.parse(localStorage.getItem('iw.prefs') || '{}'); } catch (e) {}
+    const m = s && s.user && s.user.user_metadata && s.user.user_metadata.prefs;
+    if (m && typeof m === 'object') p = m;
+    prefs = Object.assign({}, DEFAULT_PREFS, p);
+    applyPrefs();
   }
+  function applyPrefs() {
+    const r = document.documentElement;
+    if (!document.getElementById('iw-prefs-css')) { const st = document.createElement('style'); st.id = 'iw-prefs-css'; st.textContent = PREF_CSS; document.head.appendChild(st); }
+    if (prefs.theme === 'light' || prefs.theme === 'dark') r.setAttribute('data-theme', prefs.theme); else r.removeAttribute('data-theme');
+    r.setAttribute('data-accent', prefs.accent); r.setAttribute('data-density', prefs.density); r.setAttribute('data-size', prefs.size); r.setAttribute('data-width', prefs.width);
+  }
+  function setPref(k, v) {
+    prefs[k] = v; applyPrefs();
+    try { localStorage.setItem('iw.prefs', JSON.stringify(prefs)); } catch (e) {}
+    clearTimeout(prefTimer);
+    prefTimer = setTimeout(() => { try { Promise.resolve(sb.auth.updateUser({ data: { prefs } })).catch(() => {}); } catch (e) {} }, 700);
+  }
+
+  /* Refresh: fetch fresh copies of the page files, drop saved copies, then reload. Works on a pinned home-screen icon. */
+  let refreshing = false;
+  async function hardRefresh() {
+    if (refreshing) return; refreshing = true;
+    const note = document.getElementById('iw-ptr'); if (note) { note.textContent = 'Refreshing…'; note.style.transform = 'translate(-50%,0)'; }
+    try {
+      const urls = [location.href.split('#')[0]].concat([].slice.call(document.scripts).map(x => x.src).filter(u => u && u.indexOf(location.origin) === 0));
+      await Promise.all(urls.map(u => fetch(u, { cache: 'reload' }).catch(() => {})));
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map(r => r.unregister())); }
+      if (window.caches && caches.keys) { const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k))); }
+    } catch (e) {}
+    location.reload();
+    setTimeout(() => { refreshing = false; }, 3000);   // if the reload did not happen, allow another try
+  }
+  function pullToRefresh() {
+    const standalone = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+    if (!standalone) return;
+    let y0 = null, pull = 0;
+    const bar = () => { let n = document.getElementById('iw-ptr'); if (!n) { n = document.createElement('div'); n.id = 'iw-ptr'; n.setAttribute('role', 'status'); document.body.appendChild(n); } return n; };
+    const busy = () => document.getElementById('iw-auth') || document.getElementById('iw-hh') || document.getElementById('iw-walk') || (document.activeElement && /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName));
+    document.addEventListener('touchstart', e => { y0 = (window.scrollY <= 0 && !busy() && e.touches && e.touches.length === 1) ? e.touches[0].clientY : null; pull = 0; }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (y0 === null || !e.touches || !e.touches.length) return;
+      pull = e.touches[0].clientY - y0;
+      if (pull > 20) { const n = bar(); n.textContent = pull > 90 ? 'Release to refresh' : 'Pull to refresh'; n.style.transform = 'translate(-50%,' + Math.min(0, pull - 70) + 'px)'; }
+    }, { passive: true });
+    document.addEventListener('touchend', () => {
+      const go = y0 !== null && pull > 90; y0 = null;
+      if (go) hardRefresh(); else { const n = document.getElementById('iw-ptr'); if (n && !refreshing) n.style.transform = 'translate(-50%,-70px)'; }
+    }, { passive: true });
+  }
+
+  async function accountInfo() {
+    const out = { email: session.user.email || '' };
+    try {
+      const m = new Date().toISOString().slice(0, 7);
+      const p = await sb.from('profiles').select('is_admin,ai_enabled,ai_monthly_cap').eq('id', session.user.id).maybeSingle();
+      if (p && p.data) Object.assign(out, p.data);
+      const u = await sb.from('ai_usage').select('count').eq('user_id', session.user.id).eq('month', m).maybeSingle();
+      out.used = (u && u.data && u.data.count) || 0;
+    } catch (e) {}
+    return out;
+  }
+  async function showSettings() {
+    const acct = await accountInfo();
+    const seg = (label, key, opts) => '<div style="margin:12px 0 4px;font-size:13px;color:#9aa6b5">' + label + '</div><div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      opts.map(([v, t]) => '<button data-pref="' + key + '" data-val="' + v + '" aria-pressed="' + (prefs[key] === v) + '" style="padding:9px 12px;border-radius:8px;border:1px solid ' + (prefs[key] === v ? '#4f8cff' : '#3a4452') + ';background:' + (prefs[key] === v ? '#26385f' : 'none') + ';color:#e8ecf1;font-size:14px;cursor:pointer">' + t + '</button>').join('') + '</div>';
+    const row = (id, t) => '<button id="' + id + '" style="width:100%;text-align:left;padding:12px;margin:6px 0 0;border-radius:8px;border:1px solid #3a4452;background:none;color:#e8ecf1;font-size:15px;cursor:pointer">' + t + '</button>';
+    const usage = acct.ai_enabled ? 'Receipt photo reads this month: <b>' + (acct.used || 0) + '</b> of ' + acct.ai_monthly_cap : 'Receipt photo reading is not turned on for this account.';
+    const h = '<h2 style="font-size:20px;margin:0 0 4px">Settings</h2>' +
+      seg('Color scheme', 'theme', [['auto', 'Match my phone'], ['light', 'Light'], ['dark', 'Dark']]) +
+      seg('Accent color', 'accent', Object.keys(ACCENTS).map(k => [k, ACCENTS[k]])) +
+      seg('Spacing', 'density', [['comfortable', 'Comfortable'], ['compact', 'Compact']]) +
+      seg('Text size', 'size', [['normal', 'Normal'], ['large', 'Large']]) +
+      seg('Page width (larger screens)', 'width', [['standard', 'Standard'], ['wide', 'Wide']]) +
+      '<div style="border-top:1px solid #3a4452;margin-top:14px;padding-top:6px">' + row('iw-set-refresh', 'Refresh the app') + '<div style="color:#9aa6b5;font-size:13px;margin:4px 2px 0">Loads the newest version. On the home screen you can also pull down from the top.</div>' +
+      (hh.unavailable ? '' : row('iw-set-hh', hh.role === 'member' ? 'Shared budget' : 'Household: share with your spouse')) + row('iw-set-how', 'How it works') + (acct.is_admin ? row('iw-set-admin', 'Admin: receipt photo access') : '') + '</div>' +
+      '<div style="border-top:1px solid #3a4452;margin-top:14px;padding-top:10px"><div style="font-weight:600">Account</div><div style="color:#cfd7e2;font-size:14px;margin-top:4px">' + esc(acct.email) + '</div>' +
+      '<div style="color:#cfd7e2;font-size:14px;margin-top:4px">' + usage + '</div>' +
+      '<div style="color:#9aa6b5;font-size:13px;margin-top:6px"><b>Billing:</b> there is nothing to pay. Itemwise has no subscription or charges.</div>' +
+      row('iw-set-out', 'Sign out') + '</div>';
+    const o = panel(h);
+    o.querySelectorAll('[data-pref]').forEach(b => b.onclick = () => { setPref(b.dataset.pref, b.dataset.val); showSettings(); });
+    o.querySelector('#iw-set-refresh').onclick = () => { o.remove(); hardRefresh(); };
+    const hb = o.querySelector('#iw-set-hh'); if (hb) hb.onclick = () => { o.remove(); showHousehold(); };
+    o.querySelector('#iw-set-how').onclick = () => { o.remove(); walkthrough(true); };
+    const ab = o.querySelector('#iw-set-admin'); if (ab) ab.onclick = () => { location.href = 'admin.html'; };
+    o.querySelector('#iw-set-out').onclick = () => { o.remove(); const x = document.getElementById('iw-out'); if (x) x.click(); };
+  }
+  function gear() {
+    if (document.getElementById('iw-gear')) return;
+    const b = document.createElement('button'); b.id = 'iw-gear'; b.type = 'button'; b.setAttribute('aria-label', 'Settings');
+    b.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>';
+    b.onclick = () => showSettings();
+    const top = document.querySelector('header.top');
+    if (top) top.appendChild(b); else { b.style.cssText += ';position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:9000'; document.body.appendChild(b); }
+  }
+
+  async function done(s) {
+    session = s; hh = await fetchHH(); dataUid = budgetUid(hh, s); loadPrefs(s);
+    const o = document.getElementById('iw-auth'); if (o) o.remove(); chip(); gear(); resolveReady(s); setTimeout(() => walkthrough(false), 600);
+  }
+
+  /* ---- refresh: a home-screen app has no reload button, so give it two ways ---- */
+  function refreshNow() {
+    document.dispatchEvent(new Event('iw-refresh'));
+    const go = () => location.reload();
+    try {
+      if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) navigator.serviceWorker.getRegistration().then(r => r && r.update()).catch(() => {});
+      if (window.caches && caches.keys) caches.keys().then(ks => Promise.all(ks.map(k => caches.delete(k)))).then(go, go); else go();
+    } catch (e) { go(); }
+  }
+  (function pullToRefresh() {
+    const standalone = () => window.navigator.standalone === true || (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches);
+    let y0 = null, tip = null;
+    const free = () => !document.getElementById('iw-hh') && !document.getElementById('iw-auth') && !document.getElementById('iw-walk');
+    const hide = () => { if (tip) { tip.remove(); tip = null; } };
+    document.addEventListener('touchstart', e => { y0 = (standalone() && window.scrollY <= 0 && e.touches && e.touches.length === 1 && free()) ? e.touches[0].clientY : null; }, { passive: true });
+    document.addEventListener('touchmove', e => {
+      if (y0 === null) return; const dy = e.touches[0].clientY - y0;
+      if (dy > 30) {
+        if (!tip) { tip = document.createElement('div'); tip.style.cssText = 'position:fixed;top:calc(8px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:99997;background:#26303d;color:#e8ecf1;padding:6px 14px;border-radius:16px;font:13px Inter,system-ui,sans-serif'; document.body.appendChild(tip); }
+        tip.textContent = dy > 110 ? 'Release to refresh' : 'Pull down to refresh';
+      } else hide();
+    }, { passive: true });
+    document.addEventListener('touchend', e => {
+      if (y0 === null) return; const dy = (e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientY : y0) - y0; y0 = null; hide();
+      if (dy > 110) refreshNow();
+    }, { passive: true });
+  })();
 
   function codeErr(code) { const e = new Error(code); e.code = code; return e; }
 
@@ -294,6 +450,8 @@
     if (!cfg.SUPABASE_URL || !cfg.SUPABASE_ANON_KEY || !window.supabase) {
       overlay('<h1 style="font-size:22px">Itemwise is not set up yet</h1><p style="color:#9aa6b5">Add your Supabase address and key to config.js (see README step 5).</p>'); return;
     }
+    try { prefs = Object.assign({}, DEFAULT_PREFS, JSON.parse(localStorage.getItem('iw.prefs') || '{}')); applyPrefs(); } catch (e) {}
+    pullToRefresh();
     sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
     let recovering = false;
     sb.auth.onAuthStateChange((ev, s) => {
