@@ -11,14 +11,14 @@ const m=document.getElementById('m'),t=document.getElementById('t'),esc=s=>Strin
 async function load(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){m.innerHTML='<p>Sign in on the main Itemwise page first, then reload this page.</p>';return}
-  const {data,error}=await sb.from('profiles').select('id,email,is_admin,ai_enabled,ai_monthly_cap,created_at').order('created_at');
+  const {data,error}=await sb.from('profiles').select('id,email,is_admin,ai_enabled,ai_monthly_cap,plaid_enabled,plaid_item_cap,created_at').order('created_at');
   const me=(data||[]).find(p=>p.id===session.user.id);
   if(error||!me||!me.is_admin){m.innerHTML='<p>This page is only for the admin account.</p>';return}
-  m.innerHTML='<p><small>Receipt reading is off for new accounts until you turn it on here. Each photo read costs you money, so the monthly limit is a safety stop.</small></p>';
-  t.innerHTML='<table><tr><th>Email</th><th>Photo reading</th><th>Per month</th><th></th></tr>'+data.map(p=>'<tr><td>'+esc(p.email||'')+(p.is_admin?' <small>(admin)</small>':'')+'</td><td><input type="checkbox" data-id="'+p.id+'" class="on" '+(p.ai_enabled?'checked':'')+'></td><td><input type="number" min="0" max="500" value="'+p.ai_monthly_cap+'" data-id="'+p.id+'" class="cap" style="width:80px"></td><td><button data-id="'+p.id+'" class="save">Save</button></td></tr>').join('')+'</table>';
+  m.innerHTML='<p><small>Receipt reading and bank connections are off for new accounts until you turn them on here. Your Plaid free trial has a limit on total connections for everyone (shown on your Plaid dashboard), so keep each limit small. Each photo read costs you money, so the monthly limit is a safety stop.</small></p>';
+  t.innerHTML='<table><tr><th>Email</th><th>Photo reading</th><th>Per month</th><th>Bank connections</th><th>Logins allowed</th><th></th></tr>'+data.map(p=>'<tr><td>'+esc(p.email||'')+(p.is_admin?' <small>(admin)</small>':'')+'</td><td><input type="checkbox" data-id="'+p.id+'" class="on" '+(p.ai_enabled?'checked':'')+'></td><td><input type="number" min="0" max="500" value="'+p.ai_monthly_cap+'" data-id="'+p.id+'" class="cap" style="width:80px"></td><td><input type="checkbox" data-id="'+p.id+'" class="pon" '+(p.plaid_enabled?'checked':'')+'></td><td><input type="number" min="0" max="10" value="'+(p.plaid_item_cap==null?2:p.plaid_item_cap)+'" data-id="'+p.id+'" class="pcap" style="width:70px"></td><td><button data-id="'+p.id+'" class="save">Save</button></td></tr>').join('')+'</table>';
   t.querySelectorAll('.save').forEach(b=>b.onclick=async()=>{
     const id=b.dataset.id,on=t.querySelector('.on[data-id="'+id+'"]').checked,cap=Math.max(0,Math.min(500,+t.querySelector('.cap[data-id="'+id+'"]').value||0));
-    const r=await sb.from('profiles').update({ai_enabled:on,ai_monthly_cap:cap}).eq('id',id);b.textContent=r.error?'Failed':'Saved'});
+    const r=await sb.from('profiles').update({ai_enabled:on,ai_monthly_cap:cap,plaid_enabled:t.querySelector('.pon[data-id="'+id+'"]').checked,plaid_item_cap:Math.max(0,Math.min(10,+t.querySelector('.pcap[data-id="'+id+'"]').value||0))}).eq('id',id);b.textContent=r.error?'Failed':'Saved'});
 }
 load();
 </script></body></html>

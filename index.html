@@ -641,7 +641,7 @@ const daysIn=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
 const monthShort=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{month:'short',timeZone:'UTC'});
 const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
-let editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
+let bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
 let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null;
 let view='review',openId=null,draft=null,curMonth=null,imp=null,qText='',delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
@@ -1535,13 +1535,78 @@ function parseHoldings(text){
 function setHoldings(a,list,msg){
   const snap=snapshot();a.hold=list;a.cents=sum(list.map(h=>h.val));a.auto=list.length>0;a.upd=todayISO;recordSnap();commit();toast(msg||`${list.length} holding${list.length===1?'':'s'} saved. ${a.name} is now ${fmt(a.cents)}.`,snap);
 }
+/* ---------- bank connections (website only; the page around the app provides window.iwBank) ---------- */
+function plaidKind(a){
+  const t=a.type,sub=String(a.subtype||'').toLowerCase();
+  if(t==='depository')return /savings|money market|cd|hsa|cash management/.test(sub)?'savings':'checking';
+  if(t==='credit')return 'card';if(t==='loan')return 'loan';
+  if(t==='investment')return /401|403|457|ira|roth|pension|retirement|sep|simple|tsp|529|education/.test(sub)?'retire':(/crypto/.test(sub)?'crypto':'invest');
+  return 'otherasset';
+}
+function bankCents(a){
+  const k=plaidKind(a),v=((k==='checking'||k==='savings')&&a.available!=null)?a.available:a.current;
+  return Math.max(0,Math.round((Number(v)||0)*100));
+}
+/* Bring one bank connection's accounts, holdings and new charges into the budget. Posted charges only; each is filed by your rules like an import. */
+function applyBank(p){
+  const sum0={accounts:0,added:0,review:0,modified:0,removed:0,matched:0};
+  accts();
+  (p.accounts||[]).forEach(pa=>{
+    let a=S.accts.find(x=>x.pl===pa.account_id);
+    if(!a){a={id:++S.seq,name:String(pa.official_name||pa.name||'Account').slice(0,40)+(pa.mask?' ····'+pa.mask:''),inst:String(p.institution||'').slice(0,40),kind:plaidKind(pa),cents:0,upd:todayISO,hold:[],pl:pa.account_id,item:p.item_id,sync:true};S.accts.push(a)}
+    a.cents=bankCents(pa);a.upd=todayISO;a.sync=true;a.item=p.item_id;
+    if(plaidKind(pa)==='invest'||plaidKind(pa)==='retire'||plaidKind(pa)==='crypto'){
+      const hs=(p.holdings||[]).filter(h=>h.account_id===pa.account_id&&h.value>0).map(h=>({sym:String(h.sym||'').toUpperCase().slice(0,12),name:String(h.name||'').slice(0,60),qty:Number(h.qty)||0,val:Math.round(h.value*100)}));
+      if(hs.length)a.hold=hs;
+    }
+    sum0.accounts++;
+  });
+  const acctOf={};S.accts.forEach(a=>{if(a.pl)acctOf[a.pl]=a});
+  const have=new Set(S.txs.map(t=>t.pid).filter(Boolean)),gone=new Set((S.dismissed||[]).map(t=>t.pid).filter(Boolean));
+  const rows=(p.added||[]).filter(t=>!t.pending&&t.date&&Number.isFinite(t.amount)&&!have.has(t.transaction_id)&&!gone.has(t.transaction_id)).map(t=>({date:t.date,desc:String(t.name||'Bank charge').slice(0,80),cents:Math.round(t.amount*100),pid:t.transaction_id,acct:t.account_id}));
+  const dd=dedupe(rows,S.txs.concat(S.dismissed||[]));
+  const dayDiff=(x,y)=>Math.abs((Date.parse(x+'T12:00:00Z')-Date.parse(y+'T12:00:00Z'))/864e5);
+  const mine=S.txs.filter(t=>t.entered),usedE=new Set(),fresh2=[];
+  dd.fresh.forEach(r=>{
+    const m=mine.find(t=>!usedE.has(t.id)&&t.cents===r.cents&&dayDiff(t.date,r.date)<=4);
+    if(m){usedE.add(m.id);m.desc=r.desc;m.date=r.date;m.pid=r.pid;m.acct=r.acct;delete m.entered;if(!m.manual)Object.assign(m,evaluateTx(m,S));sum0.matched++}else fresh2.push(r);
+  });
+  const added=fresh2.map(r=>{const t={id:++S.seq,date:r.date,desc:r.desc,cents:r.cents,manual:false,pid:r.pid,acct:r.acct,src:'bank'};Object.assign(t,evaluateTx(t,S));S.txs.push(t);return t});
+  /* a charge already imported from a file counts as seen, so the same one is not added again later */
+  dd.skipped.forEach(r=>{const x=S.txs.find(t=>!t.pid&&t.date===r.date&&t.cents===r.cents&&normKey(t.desc)===normKey(r.desc));if(x){x.pid=r.pid;x.acct=r.acct}});
+  sum0.added=added.length;sum0.review=added.filter(t=>t.status==='review').length;
+  (p.modified||[]).forEach(m=>{const t=S.txs.find(x=>x.pid===m.transaction_id);if(!t||t.manual||m.pending)return;if(['review','guess','auto','credit','transfer'].includes(t.status)){t.date=m.date;t.cents=Math.round(m.amount*100);t.desc=String(m.name||t.desc).slice(0,80);Object.assign(t,evaluateTx(t,S));sum0.modified++}});
+  const rm=new Set(p.removed||[]);
+  if(rm.size){const before=S.txs.length;S.txs=S.txs.filter(t=>!(t.pid&&rm.has(t.pid)&&!t.manual));sum0.removed=before-S.txs.length}
+  if(sum0.accounts)recordSnap();
+  const latest=added.map(t=>t.date.slice(0,7)).sort().pop();if(latest)curMonth=latest;
+  save();render();
+  return sum0;
+}
+window.iwApplyBank=applyBank;
+window.iwBankRender=()=>{if(view==='accounts')render()};
+function bankCard(){
+  const B=window.iwBank;if(!B||!B.available)return '';
+  const st=B.state||{},busy=st.busy;
+  let body;
+  if(!st.loaded)body='<p class="meta" style="margin:4px 0 0">Checking…</p>';
+  else if(!st.enabled)body='<p class="meta" style="margin:4px 0 0">Bank connections are not turned on for your account yet. Ask whoever runs this site to turn them on.</p>';
+  else{
+    const items=(st.items||[]).map(i=>`<div class="incrow"><span>${esc(i.institution_name||'Bank')} <span class="meta">connected ${fd(String(i.created_at||todayISO).slice(0,10))}</span></span><span>${bankDel===i.item_id?`<button class="btn small danger" type="button" data-act="bankdelyes" data-item="${esc(i.item_id)}">Remove it</button> <button class="btn small ghost" type="button" data-act="bankdelno">Keep</button>`:`<button class="btn small ghost" type="button" data-act="bankdel" data-item="${esc(i.item_id)}">Remove</button>`}</span></div>${bankDel===i.item_id?`<p class="meta" style="margin:4px 0 8px">This stops the connection. Plaid's free plan does not give the connection slot back.</p>`:''}`).join('');
+    const full=st.mine>=st.cap;
+    body=`<p class="meta" style="margin:4px 0 8px">You can connect ${st.cap} bank login${st.cap===1?'':'s'} (${st.mine} used). Balances, investment holdings and new charges come in on their own, and your rules and receipt tools work on them as usual.</p>${items}
+      <div class="actions" style="margin-top:8px"><button class="btn small primary" type="button" data-act="bankconnect" data-mode="bank"${(full||busy)?' disabled':''}>Connect a bank or card</button><button class="btn small" type="button" data-act="bankconnect" data-mode="invest"${(full||busy)?' disabled':''}>Connect an investment account</button>${(st.items||[]).length?`<button class="btn small" type="button" data-act="banksync"${busy?' disabled':''}>${busy?'Working…':'Sync now'}</button>`:''}</div>
+      ${full?'<p class="meta" style="margin:6px 0 0">You have used all your connections.</p>':''}${st.last?`<p class="meta" style="margin:6px 0 0">Last synced ${esc(st.last)}.</p>`:''}`;
+  }
+  return `<section class="card" style="margin-bottom:12px"><h3>Bank connections</h3>${body}${st.error?`<div class="status bad" style="margin-top:8px">${esc(st.error)}${st.reconnect?` <button class="btn small" type="button" data-act="bankreconnect" data-item="${esc(st.reconnect)}">Reconnect</button>`:''}</div>`:''}<p class="meta" style="margin:8px 0 0">Plaid shares only balances, holdings and charges. Your bank password never reaches Itemwise.</p></section>`;
+}
 function viewAccounts(){
   const T=acctTotals();
   const groups=[['cash','Cash and bank accounts'],['invest','Investments'],['other','Other assets'],['debt','What you owe']];
   const kopts=KINDS.map(k=>`<option value="${k[0]}">${esc(k[1])}</option>`).join('');
   const row=a=>{
     const isInv=acctClass(a)==='invest',open=holdOpen===a.id,n=(a.hold||[]).length;
-    const amt=editAcct===a.id?`$<input type="number" min="0" step="0.01" id="aedit" data-acctbal="${a.id}" value="${(a.cents||0)/100}" aria-label="${esc(a.name)} balance in dollars">`:(a.auto?`<span class="amt">${fmt(a.cents)}</span>`:`<button class="lim" type="button" data-act="editacct" data-id="${a.id}" aria-label="Edit ${esc(a.name)} balance, now ${fmt(a.cents)}">${fmt(a.cents)}</button>`);
+    const amt=a.sync?`<span class="amt">${fmt(a.cents)}</span>`:editAcct===a.id?`$<input type="number" min="0" step="0.01" id="aedit" data-acctbal="${a.id}" value="${(a.cents||0)/100}" aria-label="${esc(a.name)} balance in dollars">`:(a.auto?`<span class="amt">${fmt(a.cents)}</span>`:`<button class="lim" type="button" data-act="editacct" data-id="${a.id}" aria-label="Edit ${esc(a.name)} balance, now ${fmt(a.cents)}">${fmt(a.cents)}</button>`);
     const holds=open?`<div class="panel" style="margin:6px 0">
       ${n?`<table class="prev" style="width:100%"><tr><th>Holding</th><th class="r">Shares</th><th class="r">Value</th><th></th></tr>${a.hold.map((h,i)=>`<tr><td>${esc(h.sym)}${h.name?` <span class="meta">${esc(h.name)}</span>`:''}</td><td class="r">${h.qty?h.qty:''}</td><td class="r">${fmt(h.val)}</td><td class="r"><button class="btn small ghost" type="button" data-act="rmhold" data-id="${a.id}" data-i="${i}" aria-label="Remove ${esc(h.sym)}">×</button></td></tr>`).join('')}</table>`:'<p class="meta">No holdings yet. Add them one at a time, or import the holdings file from your brokerage.</p>'}
       <div class="incrow" style="flex-wrap:wrap;border-top:0"><input type="text" id="h-sym" placeholder="Symbol" maxlength="12" style="width:90px" aria-label="Symbol"><input type="number" id="h-qty" min="0" step="any" placeholder="Shares" style="width:90px" aria-label="Number of shares"><span>$<input type="number" id="h-val" min="0" step="0.01" placeholder="Value" style="width:110px" aria-label="Value in dollars"></span><button class="btn small primary" type="button" data-act="addhold" data-id="${a.id}">Add holding</button></div>
@@ -1550,10 +1615,10 @@ function viewAccounts(){
       <textarea id="h-csv" placeholder="or paste CSV text here" aria-label="Holdings CSV text" style="min-height:70px"></textarea>
       <div class="actions"><button class="btn small" type="button" data-act="imphold" data-id="${a.id}">Import pasted text</button><button class="btn small ghost" type="button" data-act="acctholds" data-id="${a.id}">Close</button></div></div>`:'';
     return `<div class="incrow"><span>${esc(a.name)} <span class="meta">${a.inst?esc(a.inst)+' · ':''}${esc(kindOf(a.kind)[1])} · updated ${fd(a.upd||todayISO)}</span></span><span>${amt}</span></div>
-      <div class="incrow" style="border-top:0;padding-top:0"><span>${isInv?`<button class="btn small" type="button" data-act="acctholds" data-id="${a.id}">${open?'Hide holdings':(n?`Holdings (${n})`:'Add holdings')}</button>`:''}</span><button class="btn small ghost" type="button" data-act="rmacct" data-id="${a.id}" aria-label="Remove ${esc(a.name)}">Remove</button></div>${holds}`;
+      <div class="incrow" style="border-top:0;padding-top:0"><span>${isInv&&!a.sync?`<button class="btn small" type="button" data-act="acctholds" data-id="${a.id}">${open?'Hide holdings':(n?`Holdings (${n})`:'Add holdings')}</button>`:(a.sync?`<span class="meta">Synced from your bank${n?` · ${n} holding${n===1?'':'s'}`:''}</span>`:'')}</span><button class="btn small ghost" type="button" data-act="rmacct" data-id="${a.id}" aria-label="Remove ${esc(a.name)}">Remove</button></div>${holds}`;
   };
   const cards=groups.map(([c,t])=>{const list=accts().filter(a=>acctClass(a)===c);return list.length?`<section class="card" style="margin-bottom:12px"><h3>${t}</h3>${list.map(row).join('')}</section>`:''}).join('');
-  return `<p class="lede">Enter what you have in each account. Update a balance whenever you like, monthly is plenty. Itemwise does not connect to banks or brokerages yet, so these stay as accurate as you keep them.</p>
+  return `${bankCard()}<p class="lede">Enter what you have in each account. Update a balance whenever you like, monthly is plenty. Itemwise does not connect to banks or brokerages yet, so these stay as accurate as you keep them.</p>
   <section class="card" style="margin-bottom:12px"><div class="two"><div><div class="meta">Assets</div><div class="amt" style="font-size:18px">${fmt(T.assets)}</div></div><div><div class="meta">Owed</div><div class="amt" style="font-size:18px">${fmt(T.debt)}</div></div></div><div style="margin-top:8px"><div class="meta">Net worth</div><div class="amt" style="font-size:22px">${fmt(T.net)}</div></div></section>
   ${cards||'<section class="card" style="margin-bottom:12px"><p class="meta" style="margin:0">No accounts yet. Add your first one below.</p></section>'}
   <section class="card"><h3>Add an account</h3><div class="incrow" style="flex-wrap:wrap;border-top:0"><input type="text" id="an-name" maxlength="40" placeholder="Name, like E*TRADE" aria-label="Account name" style="flex:1;min-width:140px"><input type="text" id="an-inst" maxlength="40" placeholder="Bank or broker (optional)" aria-label="Institution" style="flex:1;min-width:140px"></div>
@@ -1728,6 +1793,12 @@ document.addEventListener('click',e=>{
       setHoldings(a,(a.hold||[]).concat([{sym,name:'',qty:Number.isFinite(q)?q:0,val}]),`${sym} added. ${a.name} is now `+fmt(sum((a.hold||[]).map(h=>h.val))+val)+'.');break}
     case 'rmhold':{const a=accts().find(x=>x.id===id);if(!a)break;const snap=snapshot(),l=(a.hold||[]).slice();l.splice(+b.dataset.i,1);a.hold=l;if(l.length){a.cents=sum(l.map(h=>h.val))}else a.auto=false;a.upd=todayISO;recordSnap();commit();toast('Holding removed.',snap);break}
     case 'imphold':{const a=accts().find(x=>x.id===id);if(!a)break;const l=parseHoldings($('#h-csv').value||'');if(!l.length){toast('No holdings found. The file needs Symbol and Value columns.');break}setHoldings(a,l);break}
+    case 'bankconnect':if(window.iwBank)window.iwBank.connect(b.dataset.mode);break;
+    case 'banksync':if(window.iwBank)window.iwBank.sync();break;
+    case 'bankreconnect':if(window.iwBank)window.iwBank.reconnect(b.dataset.item);break;
+    case 'bankdel':bankDel=b.dataset.item;render();break;
+    case 'bankdelno':bankDel=null;render();break;
+    case 'bankdelyes':{const it=b.dataset.item;bankDel=null;if(window.iwBank)window.iwBank.remove(it);break}
     case 'dashedit':dashEdit=!dashEdit;render();break;
     case 'dashpreset':S.dash={preset:b.dataset.p,list:PRESETS[b.dataset.p].slice()};commit();break;
     case 'dashtog':{const l=dashList().slice(),w=b.dataset.w,i=l.indexOf(w);if(i>=0)l.splice(i,1);else l.push(w);S.dash={preset:'custom',list:l};commit();break}

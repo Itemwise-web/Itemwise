@@ -337,9 +337,104 @@
     if (top) top.appendChild(b); else { b.style.cssText += ';position:fixed;top:calc(10px + env(safe-area-inset-top,0px));right:12px;z-index:9000'; document.body.appendChild(b); }
   }
 
+
+  /* ---- bank connections (Plaid): the app shows the card; this does the talking to the server and to Plaid ---- */
+  const bankState = { loaded: false, enabled: false, cap: 0, mine: 0, items: [], busy: false, error: '', reconnect: '', last: '' };
+  const BANK_ERR = {
+    plaid_not_enabled: 'Bank connections are not turned on for your account.',
+    plaid_cap_reached: 'You have used all the bank connections your account allows.',
+    plaid_global_cap: 'The site has used all its free bank connections.',
+    session_expired: 'Your sign-in expired. Sign in again.',
+    login_required: 'The bank needs you to sign in again.',
+    plaid_error: 'The bank connection had a problem. Try again in a little while.',
+    server_error: 'Something went wrong on the server. Try again.'
+  };
+  const bankTell = () => { try { if (window.iwBankRender) window.iwBankRender(); } catch (e) {} };
+  async function bankCall(action, body) {
+    try {
+      const r = await fetch(cfg.SUPABASE_URL + '/functions/v1/plaid', { method: 'POST', headers: { 'content-type': 'application/json', apikey: cfg.SUPABASE_ANON_KEY, authorization: 'Bearer ' + (session && session.access_token) }, body: JSON.stringify(Object.assign({ action }, body || {})) });
+      let data = {}; try { data = await r.json(); } catch (e) {}
+      return { ok: r.ok, status: r.status, data };
+    } catch (e) { return { ok: false, status: 0, data: { code: 'network' } }; }
+  }
+  const bankFail = (r, item) => { bankState.error = BANK_ERR[r.data.code] || 'Could not reach the bank service. Try again.'; bankState.reconnect = r.data.code === 'login_required' ? item || '' : ''; };
+  async function bankRefresh() {
+    const r = await bankCall('status');
+    if (r.ok) { Object.assign(bankState, r.data, { loaded: true }); bank.available = true; }
+    else if (r.status === 404 || r.status === 0) { bank.available = false; }   // the server piece is not installed yet: hide the card
+    else { bank.available = true; bankState.loaded = true; bankState.enabled = false; }
+    bankTell();
+  }
+  function loadPlaid() {
+    if (window.Plaid) return Promise.resolve();
+    return new Promise((res, rej) => { const s = document.createElement('script'); s.src = 'https://cdn.plaid.com/link/v2/stable/link-initialize.js'; s.onload = res; s.onerror = () => rej(new Error('load')); document.head.appendChild(s); });
+  }
+  async function bankSync(auto) {
+    if (bankState.busy) return; bankState.busy = true; bankState.error = ''; bankState.reconnect = ''; bankTell();
+    let added = 0, review = 0, accounts = 0, pend = false;
+    for (const it of bankState.items.slice()) {
+      for (let page = 0; page < 6; page++) {
+        const r = await bankCall('sync', { item_id: it.item_id });
+        if (!r.ok) { bankFail(r, it.item_id); break; }
+        let sm = { added: 0, review: 0, accounts: 0 };
+        try { sm = (window.iwApplyBank && window.iwApplyBank(r.data)) || sm; } catch (e) { bankState.error = 'Could not add the bank data. Nothing was lost; try again.'; break; }
+        added += sm.added; review += sm.review; accounts += sm.accounts; pend = pend || !!r.data.pending;
+        if (!r.data.pending) await bankCall('ack', { item_id: it.item_id, cursor: r.data.next_cursor });
+        if (!r.data.more) break;
+      }
+    }
+    bankState.busy = false; bankState.last = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    try { localStorage.setItem('iw.plaid.last', String(Date.now())); } catch (e) {}
+    if (!auto && !bankState.error && window.toast) window.toast(pend ? 'Your bank is still preparing its data. Try Sync now again in a few minutes.' : (added ? added + ' new charge' + (added === 1 ? '' : 's') + ' came in' + (review ? ', ' + review + ' need your decision.' : '.') : 'Up to date.'));
+    bankTell();
+  }
+  async function bankOpen(token, onDone) {
+    try { await loadPlaid(); } catch (e) { bankState.error = 'Could not load the bank connection window. Check your internet and try again.'; bankState.busy = false; bankTell(); return; }
+    try { localStorage.setItem('iw.plaid.lt', token); } catch (e) {}
+    const h = window.Plaid.create({ token, onSuccess: async (pt, meta) => { await onDone(pt, meta); }, onExit: () => { bankState.busy = false; bankTell(); } });
+    h.open();
+  }
+  const bank = {
+    available: false, state: bankState,
+    async connect(mode) {
+      if (bankState.busy) return; bankState.busy = true; bankState.error = ''; bankTell();
+      const r = await bankCall('link_token', { mode });
+      if (!r.ok) { bankFail(r); bankState.busy = false; bankTell(); return; }
+      await bankOpen(r.data.link_token, async (pt, meta) => {
+        const x = await bankCall('exchange', { public_token: pt, institution_name: meta && meta.institution && meta.institution.name });
+        bankState.busy = false;
+        if (!x.ok) { bankFail(x); bankTell(); return; }
+        await bankRefresh(); await bankSync(false);
+      });
+    },
+    async reconnect(itemId) {
+      if (bankState.busy) return; bankState.busy = true; bankState.error = ''; bankTell();
+      const r = await bankCall('link_token', { item_id: itemId });
+      if (!r.ok) { bankFail(r); bankState.busy = false; bankTell(); return; }
+      await bankOpen(r.data.link_token, async () => { bankState.busy = false; await bankSync(false); });
+    },
+    async sync() { await bankSync(false); },
+    async remove(itemId) {
+      bankState.error = ''; const r = await bankCall('remove', { item_id: itemId });
+      if (!r.ok) bankFail(r); else { await bankRefresh(); if (window.toast) window.toast('Connection removed.'); }
+      bankTell();
+    }
+  };
+  window.iwBank = bank;
+  async function bankStart() {
+    await bankRefresh();
+    if (/oauth_state_id=/.test(location.search) && bank.available && bankState.enabled) {   // coming back from a bank's own sign-in page
+      let tok = ''; try { tok = localStorage.getItem('iw.plaid.lt') || ''; } catch (e) {}
+      if (tok) { try { await loadPlaid(); window.Plaid.create({ token: tok, receivedRedirectUri: location.href, onSuccess: async (pt, meta) => { const x = await bankCall('exchange', { public_token: pt, institution_name: meta && meta.institution && meta.institution.name }); if (x.ok) { await bankRefresh(); await bankSync(false); } else { bankFail(x); bankTell(); } }, onExit: () => {} }).open(); } catch (e) {} }
+      try { history.replaceState(null, '', location.pathname); } catch (e) {}
+    }
+    let last = 0; try { last = +localStorage.getItem('iw.plaid.last') || 0; } catch (e) {}
+    if (bank.available && bankState.enabled && bankState.items.length && Date.now() - last > 6 * 36e5) bankSync(true);
+  }
+
   async function done(s) {
     session = s; hh = await fetchHH(); dataUid = budgetUid(hh, s); loadPrefs(s);
-    const o = document.getElementById('iw-auth'); if (o) o.remove(); chip(); gear(); resolveReady(s); setTimeout(() => walkthrough(false), 600);
+    const o = document.getElementById('iw-auth'); if (o) o.remove(); chip(); gear(); resolveReady(s); setTimeout(bankStart, 800); setTimeout(() => walkthrough(false), 600);
   }
 
   /* ---- refresh: a home-screen app has no reload button, so give it two ways ---- */
