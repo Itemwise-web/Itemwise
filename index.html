@@ -290,7 +290,7 @@ table.prev td.r,table.prev th.r{text-align:right}
 
 <script id="logic">
 const sum=a=>a.reduce((x,y)=>x+y,0);
-const CATS0=['Grocery','Household','Home','Personal','Restaurants','Gas','Rent','Utilities','Fun','Other'];
+const CATS0=['Giving', 'Savings', 'Mortgage/Rent', 'Home Maintenance', 'Household Supplies', 'Electricity', 'Natural Gas', 'Water & Sewer', 'Trash', 'Internet', 'Cell Phone', 'TV & Cable', 'Personal Subscriptions', 'Household Subscriptions', 'Grocery', 'Restaurants', 'Fuel', 'Car Maintenance', 'Car Payment', 'Insurance', 'Medicine', 'Doctor Visits', 'Fun', 'Clothing', 'Personal Care', 'Other'];
 const fmt=c=>{const a=Math.abs(c);const s='$'+(a/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});return c<0?'−'+s:s};
 const fd=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'});
 const monthLabel=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{month:'long',year:'numeric',timeZone:'UTC'});
@@ -411,13 +411,19 @@ function matchRule(desc,rules){
 }
 /* Built-in guesses for obvious merchants, so most new charges need only a one-tap confirmation. */
 const SUGGEST=[
-  [/7\s?BREW|STARBUCKS|DUTCH BROS|DUNKIN|COFFEE|CHILLI|FIVE GUYS|CHICK-FIL|MCDONALD|WENDY|BURGER|TACO|PIZZA|CAFE|GRILL|DINER|BBQ|SUBWAY|RESTAURANT|BAKERY|DONUT|WAFFLE|SUSHI|CHIPOTLE|PANERA|DOMINO|SONIC DRIVE|\bQSR\b/,'Restaurants'],
-  [/EXXON|CHEVRON|MURPHY|CASEY'?S|SPEEDWAY|QUIKTRIP|FUEL|MARATHON|CONOCO|\bSHELL\b/,'Gas'],
-  [/NETFLIX|AMAZON PRIME|PRIME VIDEO|AMZN PRIME|OPENAI|CHATGPT|DISNEY|SPOTIFY|CANVA|HULU|PEACOCK/,'Subscriptions'],
+  [/EXXON|CHEVRON|MURPHY|CASEY'?S|SPEEDWAY|QUIKTRIP|FUEL|MARATHON|CONOCO|\bSHELL\b/,'Fuel'],
+  [/NETFLIX|AMAZON PRIME|PRIME VIDEO|AMZN PRIME|DISNEY|SPOTIFY|HULU|PEACOCK|HBO|PARAMOUNT|YOUTUBE|APPLE\.COM\/BILL|OPENAI|CHATGPT|CANVA/,'Personal Subscriptions'],
   [/CHURCH|TITHE/,'Giving'],
+  [/VERIZON|T-MOBILE|AT&T WIRELESS|MINT MOBILE|CRICKET|VISIBLE|US CELLULAR/,'Cell Phone'],
+  [/COMCAST|XFINITY|SPECTRUM|COX COMM|FRONTIER|GOOGLE FIBER|AT&T INTERNET|\bINTERNET\b/,'Internet'],
+  [/DIRECTV|DISH NETWORK|\bCABLE\b/,'TV & Cable'],
+  [/NATURAL GAS|ATMOS|CENTERPOINT/,'Natural Gas'],
+  [/ELECTRIC|\bPOWER\b|ENERGY|ENTERGY/,'Electricity'],
+  [/\bWATER\b|SEWER/,'Water & Sewer'],
+  [/WASTE|TRASH|SANITATION|REPUBLIC SERVICES/,'Trash'],
   [/JIFFY|OIL CHANGE|AUTOZONE|O'?REILLY|ADVANCE AUTO|NAPA|DISCOUNT TIRE|\bTIRES?\b/,'Car Maintenance'],
-  [/ELECTRIC|\bPOWER\b|ENERGY|\bWATER\b|COMCAST|XFINITY|SPECTRUM|INTERNET|AT&T|VERIZON|T-MOBILE/,'Utilities'],
   [/PHARMACY|WALGREEN|\bCVS\b/,'Medicine'],[/CLINIC|DOCTOR|URGENT CARE|DENTAL|DENTIST/,'Doctor Visits'],
+  [/7\s?BREW|STARBUCKS|DUTCH BROS|DUNKIN|COFFEE|CHILI'?S|FIVE GUYS|CHICK-FIL|MCDONALD|WENDY|BURGER|TACO|PIZZA|CAFE|GRILL|DINER|BBQ|SUBWAY|RESTAURANT|BAKERY|DONUT|WAFFLE|SUSHI|CHIPOTLE|PANERA|DOMINO|SONIC DRIVE/,'Restaurants'],
   [/\bAMC\b|CINEMA|THEATER|THEATRE|STEAM|PLAYSTATION|XBOX|NINTENDO|HOBBY|BOWLING|ARCADE|GOLF/,'Fun'],
   [/PARKING|\bTOLL\b|\bUBER\b|\bLYFT\b/,'Other']
 ];
@@ -451,7 +457,7 @@ function evaluateTx(t,S){
   const r=t.noRule?null:matchRule(t.desc,S.rules);
   if(r){
     if(r.mode==='transfer') return {status:'transfer',allocations:[]};
-    if((r.mode==='ask'||r.mode==='askall')&&t.cents>0&&/\bFUEL\b|GASOLINE/.test(t.desc.toUpperCase())&&S.cats.includes('Gas')) return {status:'auto',allocations:[{cat:'Gas',cents:t.cents}]};
+    if((r.mode==='ask'||r.mode==='askall')&&t.cents>0&&/\bFUEL\b|GASOLINE/.test(t.desc.toUpperCase())&&S.cats.includes('Fuel')) return {status:'auto',allocations:[{cat:'Fuel',cents:t.cents}]};
     if(r.mode==='askall') return {status:'review',allocations:[]};
     if(r.mode==='ask'&&Math.abs(t.cents)>S.cfg.threshold) return {status:'review',allocations:[]};
     return {status:'auto',allocations:[{cat:r.cat,cents:t.cents}]};
@@ -482,9 +488,9 @@ function totals(lines,tax,charge){const items=sum(lines.map(l=>l.cents));return 
 
 const KEYWORDS=[
   [/milk|egg|bread|chicken|beef|banana|apple|cheese|cheddar|yogurt|butter|cereal|pasta|coffee|spinach|rice|steak|ribeye|pizza|produce|fruit|veg|berries|oil|bacon|pork|turkey|lettuce|onion|potato/i,'Grocery'],
-  [/soap|detergent|tide|paper towel|tissue|trash|sponge|cleaner|dish|laundry|wipes|foil/i,'Household'],
-  [/towel|duvet|candle|bulb|lamp|chair|throw|pillow|decor|furniture|frame|curtain/i,'Home'],
-  [/cable|charger|sock|notebook|shampoo|toothpaste|vitamin|razor|deodorant/i,'Personal'],
+  [/soap|detergent|tide|paper towel|tissue|trash|sponge|cleaner|dish|laundry|wipes|foil/i,'Household Supplies'],
+  [/towel|duvet|candle|bulb|lamp|chair|throw|pillow|decor|furniture|frame|curtain/i,'Household Supplies'],
+  [/cable|charger|sock|notebook|shampoo|toothpaste|vitamin|razor|deodorant/i,'Personal Care'],
   [/lego|toy|game|puzzle|movie/i,'Fun']
 ];
 const nk=n=>String(n).toUpperCase().replace(/\s+/g,' ').trim();
@@ -537,17 +543,18 @@ const PLAN_NOV26={month:new Date().toISOString().slice(0,7),
  groups:[
   ['Giving',[['Giving',0]]],
   ['Savings',[['Savings',0]]],
-  ['Housing',[['Mortgage/Rent',0],['Utilities',0]]],
-  ['Transportation',[['Gas',0],['Car Maintenance',0]]],
+  ['Housing',[['Mortgage/Rent',0],['Home Maintenance',0],['Household Supplies',0]]],
+  ['Utilities',[['Electricity',0],['Natural Gas',0],['Water & Sewer',0],['Trash',0],['Internet',0],['Cell Phone',0],['TV & Cable',0]]],
+  ['Subscriptions',[['Personal Subscriptions',0],['Household Subscriptions',0]]],
   ['Food',[['Grocery',0],['Restaurants',0]]],
-  ['Personal',[['Subscriptions',0],['Household',0]]],
-  ['Lifestyle',[['Fun',0]]],
+  ['Transportation',[['Fuel',0],['Car Maintenance',0],['Car Payment',0]]],
   ['Insurance',[['Insurance',0]]],
-  ['Health',[['Medicine',0],['Doctor Visits',0]]]
+  ['Health',[['Medicine',0],['Doctor Visits',0]]],
+  ['Lifestyle',[['Fun',0],['Clothing',0],['Personal Care',0]]]
  ]};
 /* Make any saved or fresh state use the plan's categories, keeping every older category that is still in use. */
 function adoptPlan(St){
-  const ren={Groceries:'Grocery',Rent:'Mortgage/Rent',Utilities:'Electricity'},rn=c=>ren[c]||c;
+  const ren={Groceries:'Grocery',Rent:'Mortgage/Rent'},rn=c=>ren[c]||c;
   St.cats=[...new Set(St.cats.map(rn))];
   St.rules.forEach(r=>{r.cat=rn(r.cat)});
   St.learned=St.learned||{};Object.keys(St.learned).forEach(k=>{St.learned[k]=rn(St.learned[k])});
@@ -572,18 +579,18 @@ function presets(St){
 }
 function freshState(){
   const St={v:1,seq:1000,cats:CATS0.slice(),
-    budgets:{Groceries:65000,Household:6000,Home:10000,Personal:8000,Restaurants:15000,Gas:12000,Rent:135000,Utilities:22000,Fun:10000,Other:5000},
+    budgets:{},
     cfg:{threshold:5000},
     rules:[
       {id:1,pattern:'WALMART',mode:'ask',cat:'Grocery'},{id:2,pattern:'WAL-MART',mode:'ask',cat:'Grocery'},
       {id:3,pattern:'TARGET',mode:'ask',cat:'Grocery'},
-      {id:5,pattern:'AMAZON',mode:'ask',cat:'Household'},{id:6,pattern:'AMZN',mode:'ask',cat:'Household'},
+      {id:5,pattern:'AMAZON',mode:'ask',cat:'Household Supplies'},{id:6,pattern:'AMZN',mode:'ask',cat:'Household Supplies'},
       {id:8,pattern:'ALDI',mode:'cat',cat:'Grocery'},{id:18,pattern:'TRADER JOE',mode:'cat',cat:'Grocery'},
-      {id:9,pattern:'SHELL',mode:'cat',cat:'Gas'},{id:10,pattern:'EXXON',mode:'cat',cat:'Gas'},{id:11,pattern:'CHEVRON',mode:'cat',cat:'Gas'},
+      {id:9,pattern:'SHELL',mode:'cat',cat:'Fuel'},{id:10,pattern:'EXXON',mode:'cat',cat:'Fuel'},{id:11,pattern:'CHEVRON',mode:'cat',cat:'Fuel'},
       {id:12,pattern:'ONLINE TRANSFER',mode:'transfer',cat:''},{id:13,pattern:'PAYMENT THANK YOU',mode:'transfer',cat:''},
       {id:14,pattern:'TRANSFER TO',mode:'transfer',cat:''},{id:15,pattern:'TRANSFER FROM',mode:'transfer',cat:''},
       {id:16,pattern:'WM SUPERCENTER',mode:'ask',cat:'Grocery'},{id:17,pattern:'SAMS CLUB',mode:'askall',cat:'Grocery',gas:true},
-      {id:19,pattern:'MURPHY',mode:'cat',cat:'Gas'}
+      {id:19,pattern:'MURPHY',mode:'cat',cat:'Fuel'}
     ],
     rv:8,track:{},dismissed:[],learned:{},txs:[]};
   adoptPlan(St);presets(St);
@@ -608,7 +615,7 @@ function migrate(){
   const v=S.rv||1;if(v>=8)return;
   if(v<2){
     S.rules=S.rules.filter(r=>!((r.pattern==='COSTCO'||r.pattern==='KROGER')&&r.mode==='ask'));
-    const tg=S.rules.find(r=>r.pattern==='TARGET'&&r.mode==='ask'&&r.cat==='Household');if(tg)tg.cat='Grocery';
+    const tg=S.rules.find(r=>r.pattern==='TARGET'&&r.mode==='ask'&&r.cat==='Household Supplies');if(tg)tg.cat='Grocery';
     if(!S.rules.some(r=>r.pattern==='TRADER JOE'))S.rules.push({id:++S.seq,pattern:'TRADER JOE',mode:'cat',cat:'Grocery'});
   }
   if(v<4){
@@ -617,7 +624,7 @@ function migrate(){
       if(['WALMART','WAL-MART','WM SUPERCENTER'].includes(r.pattern)&&r.mode==='askall')r.mode='ask';
       if(r.pattern==='SAMS CLUB'){r.mode='askall';r.gas=true}
     });
-    if(!S.rules.some(r=>r.pattern==='MURPHY'))S.rules.push({id:++S.seq,pattern:'MURPHY',mode:'cat',cat:'Gas'});
+    if(!S.rules.some(r=>r.pattern==='MURPHY'))S.rules.push({id:++S.seq,pattern:'MURPHY',mode:'cat',cat:'Fuel'});
   }
   if(v<5){
     /* Dining is now called Restaurants everywhere, including saved charges, rules and budgets. */
@@ -641,12 +648,20 @@ const daysIn=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
 const monthShort=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{month:'short',timeZone:'UTC'});
 const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
-let bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
+let expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
 let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null;
 let view='review',openId=null,draft=null,curMonth=null,imp=null,qText='',delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const find=id=>S.txs.find(t=>t.id===id);
+function resetStarterCats(){
+  if(S.txs.length)return false;
+  const snap=snapshot(),f=freshState(),old={...(S.budgets||{})};
+  S.cats=f.cats.slice();S.groups=f.groups.map(g=>({name:g.name,cats:g.cats.slice()}));S.rules=f.rules;S.track=f.track||{};S.learned={};
+  Object.keys(S.plans||{}).forEach(m=>{const pl=S.plans[m],ob=pl.budgets||{};pl.budgets={};S.cats.forEach(c=>{pl.budgets[c]=ob[c]||0})});
+  S.budgets={};S.cats.forEach(c=>{S.budgets[c]=old[c]||0});
+  commit();toast('Categories reset to the new starter list. Your income and any amounts under matching names were kept.',snap);return true;
+}
 function normGroups(){S.groups=groupedCats().map(([name,cats])=>({name,cats:cats.slice()}))}
 function catUsage(n){let tx=0;S.txs.forEach(t=>{if((t.allocations||[]).some(a=>a.cat===n)||(t.split&&t.split.lines&&t.split.lines.some(l=>l.cat===n)))tx++});
   const rules=S.rules.filter(r=>r.cat===n&&r.mode==='cat').length;return {tx,rules}}
@@ -711,7 +726,7 @@ function goalInfo(c,m){
   return {target:g.target,by:g.by,saved,left,pct:g.target>0?Math.min(saved/g.target,1)*100:0,done:left===0,plan,contrib,monthLeft:Math.max(plan-contrib,0),monthsLeft,need:monthsLeft?Math.ceil(left/monthsLeft):left,moreMonths:plan>0?Math.ceil(left/plan):null};
 }
 const OVER_SLACK=100;   // up to $1.00 past a budget still counts as on track
-const NO_PACE=new Set(['Giving','Housing','Savings','Personal','Insurance']);
+const NO_PACE=new Set(['Giving','Housing','Savings','Utilities','Subscriptions','Insurance']);
 function plannedSpend(m){const b=planFor(m).budgets;return sum(S.cats.filter(c=>groupOf(c)!=='Savings').map(c=>b[c]||0))}
 /* A readable merchant name from noisy bank text: "WAL-MART #4108 DDA PIN POS PUR CD7544" becomes "Wal-Mart". */
 function niceName(desc){
@@ -733,6 +748,8 @@ function niceName(desc){
   }
   return n.trim().slice(0,40);
 }
+const STARTER=true;
+const groupOpen0=(g,gp,gs)=>!STARTER||arrange||expandedG.has(g)||(!collapsedG.has(g)&&(gp>0||gs>0));
 const VIEWS=[['overview','Overview'],['budgets','Budgets'],['activity','Activity'],['review','Review'],['import','Import'],['accounts','Accounts'],['rules','Rules'],['data','Data'],['more','More']];
 const byDate=(a,b)=>b.date.localeCompare(a.date)||(b.id-a.id);
 let undoSnap=null;
@@ -1057,6 +1074,8 @@ function renderMonthbar(){
   $('#monthbar').innerHTML=`<button class="btn small" type="button" data-act="prev"${i>0?'':' disabled'} aria-label="Previous month">‹</button><span>${monthLabel(curMonth)}</span><button class="btn small" type="button" data-act="next"${(i>=0&&i<ms.length-1)?'':' disabled'} aria-label="Next month">›</button>`;
 }
 function renderStrip(){
+  if(STARTER&&!S.txs.length){const e=$('#strip');e.innerHTML='';e.style.display='none';return}
+  $('#strip').style.display='';
   const st=stats(),budgeted=plannedSpend(curMonth);
   $('#strip').innerHTML=
    `<div class="cell"><span class="lbl">Spent</span><b>${fmt(st.total)}</b><small>${st.n} charge${st.n===1?'':'s'} this month</small></div>
@@ -1117,7 +1136,7 @@ function cardHTML(t){
   const open=openId===t.id,r=matchRule(t.desc,S.rules),def=(r&&r.cat&&S.cats.includes(r.cat))?r.cat:neutralCat();
   const remember=(!r&&t.cents>0&&!isP2P(t.desc))?`<div class="remember"><label class="field"><input type="checkbox" id="rem-${t.id}" checked> Remember: always file charges containing</label><input type="text" id="pat-${t.id}" value="${esc(merchantKey(t.desc))}" aria-label="Text to remember"><span>under the category chosen above</span></div>`:'';
   return `<article class="card"><div class="card-top"><div><h3 title="${esc(t.desc)}">${esc(niceName(t.desc))}</h3><p class="meta">${reviewReason(t)}</p><p class="raw" title="${esc(t.desc)}">${esc(t.desc)}</p></div><div class="amt${t.cents<0?' neg':''}">${fmt(t.cents)}</div></div>
-   ${open?editorHTML(t):`<div class="actions"><label>Put it all in <select id="q-${t.id}">${catOpts(def)}</select></label><button class="btn" type="button" data-act="assign" data-id="${t.id}">Assign all</button>${(r&&r.gas&&t.cents>0&&S.cats.includes('Gas')&&def!=='Gas')?`<button class="btn" type="button" data-act="assigncat" data-id="${t.id}" data-cat="Gas">It was gas</button>`:''}<button class="btn small ghost" type="button" data-act="dismiss" data-id="${t.id}" title="Take this out of Itemwise. It stays out if you import the same file again.">Remove</button><span class="sp"></span>${t.cents>0?`<button class="btn primary" type="button" data-act="open" data-id="${t.id}">Split with a receipt</button>`:''}</div>${remember}`}</article>`;
+   ${open?editorHTML(t):`<div class="actions"><label>Put it all in <select id="q-${t.id}">${catOpts(def)}</select></label><button class="btn" type="button" data-act="assign" data-id="${t.id}">Assign all</button>${(r&&r.gas&&t.cents>0&&S.cats.includes('Fuel')&&def!=='Fuel')?`<button class="btn" type="button" data-act="assigncat" data-id="${t.id}" data-cat="Gas">It was gas</button>`:''}<button class="btn small ghost" type="button" data-act="dismiss" data-id="${t.id}" title="Take this out of Itemwise. It stays out if you import the same file again.">Remove</button><span class="sp"></span>${t.cents>0?`<button class="btn primary" type="button" data-act="open" data-id="${t.id}">Split with a receipt</button>`:''}</div>${remember}`}</article>`;
 }
 function viewReview(){
   const items=S.txs.filter(t=>t.status==='review').sort(byDate),st=stats();
@@ -1315,16 +1334,29 @@ function viewBudgets(){
    <div class="two"><div><div class="meta">Planned income</div><div class="amt" style="font-size:18px">${fmt(incTotal)}</div></div><div><div class="meta">Planned spending</div><div class="amt" style="font-size:18px">${fmt(budgeted)}</div></div></div>
    <div class="two" style="margin-top:10px"><div><div class="meta">Planned savings</div><div class="amt" style="font-size:18px">${fmt(saveT)}</div></div><div><div class="meta">Left to budget</div><div class="amt" style="font-size:18px">${fmt(leftToBudget)}</div></div></div>
    <div class="status ${leftToBudget===0?'ok':'bad'}" style="margin-top:12px">${leftToBudget===0?'✓ Every dollar of income has a job.':(leftToBudget>0?fmt(leftToBudget)+' of income is not planned yet.':fmt(-leftToBudget)+' more is planned than income.')}</div>
-   ${incSummary}${depHTML}${extraHTML}<div style="margin-top:8px"><button class="btn small ghost" type="button" data-act="toggleinc">${showInc?'Hide':'Show'} ${incs.length} income ${incs.length===1?'line':'lines'}</button></div>${showInc?incs.map(incRow).join('')+incAdd:''}</section>`:'';
+   ${incSummary}${depHTML}${extraHTML}${incs.length?`<div style="margin-top:8px"><button class="btn small ghost" type="button" data-act="toggleinc">${showInc?'Hide':'Show'} ${incs.length} income ${incs.length===1?'line':'lines'}</button></div>`:`<div class="status bad" style="margin-top:12px"><b>Start here:</b> add what you earn each month. Type a name, like Paycheck, and an amount, then tap Add income. Itemwise uses it to show what is left to give a job.</div>`}${(showInc||!incs.length)?incs.map(incRow).join('')+incAdd:''}</section>`:'';
   const hasTx=st.n>0;
   const gnames=groupedCats().map(x=>x[0]);
   const arrRow=(c,i,n)=>{const u=delAsk===c?catUsage(c):null;
     return `<div class="incrow" style="flex-wrap:wrap"><span>${esc(c)} <span class="meta">${fmt(B[c]||0)} planned</span></span><span><button class="btn small ghost" type="button" data-act="cup" data-name="${esc(c)}"${i?'':' disabled'} aria-label="Move ${esc(c)} up">▲</button> <button class="btn small ghost" type="button" data-act="cdown" data-name="${esc(c)}"${i<n-1?'':' disabled'} aria-label="Move ${esc(c)} down">▼</button> <select data-cmove="${esc(c)}" aria-label="Move ${esc(c)} to another box">${gnames.map(g=>`<option${g===groupOf(c)?' selected':''}>${esc(g)}</option>`).join('')}</select> ${c==='Other'?'':`<button class="btn small ghost" type="button" data-act="cdel" data-name="${esc(c)}">Delete</button>`}</span></div>${u?`<div class="status bad" style="margin:4px 0"><span>Delete ${esc(c)}? ${u.tx?`${u.tx} charge${u.tx===1?'':'s'} will go back to Review`:'No charges use it'}${u.rules?` and ${u.rules} rule${u.rules===1?'':'s'} will be removed`:''}. You can undo it.</span> <button class="btn small" type="button" data-act="cdelyes" data-name="${esc(c)}">Delete it</button> <button class="btn small ghost" type="button" data-act="cdelno">Keep it</button></div>`:''}`};
+  const hasIncome=((planFor(curMonth).income)||[]).length>0,hasAmounts=Object.values(planFor(curMonth).budgets||{}).some(v=>v>0);
+  const setupSteps=[[hasIncome,'Add your income','So the plan knows what there is to give a job.',`<button class="btn small primary" type="button" data-act="setupincome">Add income</button>`],
+    [hasAmounts,'Set what you plan to spend','Tap a box below, then a category, and type an amount. Zeros are fine to start.',`<button class="btn small" type="button" data-act="setupamounts">Open all boxes</button>`],
+    [S.txs.length>0,'Bring in your charges','Import a file from your bank, or connect a bank if it is turned on for you.',`<a class="btn small" href="#import">Import a file</a>`],
+    [accts().length>0,'Add your accounts (optional)','For net worth and money available.',`<a class="btn small" href="#accounts">Add accounts</a>`]];
+  const setupDone=setupSteps.slice(0,3).every(x=>x[0]);
+  const nDone=setupSteps.filter(x=>x[0]).length;
+  const setupCard=(STARTER&&!setupDone)?(S.setupHidden
+    ?`<section class="card" style="margin-bottom:10px"><div class="ghead"><span><b>Get set up</b> <span class="meta">${nDone} of ${setupSteps.length} steps done</span></span><button class="btn small" type="button" data-act="setuptoggle" aria-label="Show the setup guide">Show</button></div></section>`
+    :`<section class="card" style="margin-bottom:16px;border-color:var(--accent)"><div class="ghead"><h3 style="margin:0">Get set up</h3><button class="btn small ghost" type="button" data-act="setuptoggle" aria-label="Hide the setup guide">Hide</button></div><div role="img" aria-label="${nDone} of ${setupSteps.length} steps done" style="height:6px;border-radius:3px;background:var(--line);margin:8px 0 10px;overflow:hidden"><div style="width:${nDone/setupSteps.length*100}%;height:100%;background:var(--accent)"></div></div>${setupSteps.map((x,i)=>`<div class="incrow" style="flex-wrap:wrap"><span><b style="color:${x[0]?'var(--ok)':'var(--neutral)'}">${x[0]?'✓':'○'}</b> ${i+1}. <b>${x[1]}</b><br><span class="meta">${x[2]}</span></span><span>${x[0]?'':x[3]}</span></div>`).join('')}</section>`):'';
+  const groupOpen=(g,gp,gs)=>!STARTER||arrange||expandedG.has(g)||(!collapsedG.has(g)&&(gp>0||gs>0));
   const groupCards=groupedCats().map(([g,cs],gi)=>{
     if(arrange){const gp0=sum(cs.map(c=>B[c]||0));return `<section class="card" style="margin-bottom:16px"><div class="ghead"><h3 style="margin:0">${esc(g)}</h3><span class="gsum"><span class="meta">${fmt(gp0)}</span><button class="btn small ghost" type="button" data-act="gup" data-g="${esc(g)}"${gi?'':' disabled'} aria-label="Move ${esc(g)} box up">▲</button><button class="btn small ghost" type="button" data-act="gdown" data-g="${esc(g)}"${gi<gnames.length-1?'':' disabled'} aria-label="Move ${esc(g)} box down">▼</button></span></div>${cs.map((c,i)=>arrRow(c,i,cs.length)).join('')}</section>`}
     const gp=sum(cs.map(c=>B[c]||0)),gs=sum(cs.map(c=>(byCat[c]||{}).spent||0));
     const rows=cs.map(c=>{const r=byCat[c];return ((r.spent!==0||r.pend>0)?brow(r):crow(r))+catList(c)}).join('');
-    return `<section class="card" style="margin-bottom:16px"><div class="ghead"><h3 style="margin:0">${esc(g)}</h3><span class="gsum"><span class="meta">Planned</span><b class="mono">${fmt(gp)}</b>${gs?`<span class="meta">Spent</span><b class="mono">${fmt(gs)}</b>`:''}</span></div>${rows}</section>`;
+    const op=groupOpen(g,gp,gs),sums=`<span class="gsum"><span class="meta">Planned</span><b class="mono">${fmt(gp)}</b>${gs?`<span class="meta">Spent</span><b class="mono">${fmt(gs)}</b>`:''}</span>`;
+    const head=STARTER?`<button type="button" class="ghead" data-act="tgroup" data-g="${esc(g)}" aria-expanded="${op}" style="width:100%;background:none;border:0;padding:0;color:inherit;text-align:left;cursor:pointer;font:inherit"><h3 style="margin:0">${op?'▾':'▸'} ${esc(g)} <span class="meta" style="font-weight:400">${cs.length} categor${cs.length===1?'y':'ies'}</span></h3>${sums}</button>`:`<div class="ghead"><h3 style="margin:0">${esc(g)}</h3>${sums}</div>`;
+    return `<section class="card" style="margin-bottom:${STARTER?'10':'16'}px">${head}${op?rows:''}</section>`;
   }).join('');
   const hold=st.pending?`<section class="panel" style="border-style:solid;background:var(--warn-soft);border-color:transparent"><h3 style="color:var(--warn)">Needs categorization: ${fmt(st.unalloc)}</h3><p style="color:var(--warn);margin:0">${st.pending} purchase${st.pending===1?'':'s'} counted in total spending but held out of every category. <a href="#review" style="color:inherit;font-weight:600">Review them</a></p></section>`:'';
   const bad=integrityProblems(S.txs);
@@ -1335,8 +1367,8 @@ function viewBudgets(){
    <div class="cols"><section class="card"><h3>Month so far</h3><p class="meta" style="margin:2px 0 8px">Your running total against your whole plan. Hover or drag across it for any day.</p>${monthChart(budgeted)}</section>
    <section class="card">${composeHTML(st)}</section></div>
    <div class="legend" style="margin:0 0 10px"><span>${sw('var(--ok)')}Within plan</span><span>${sw('var(--bad)')}Over</span><span>${sw('repeating-linear-gradient(135deg,var(--neutral) 0 3px,transparent 3px 6px)')}Waiting for review</span>${isCur?`<span>${sw('var(--ink)','width:2px;height:12px;opacity:.55;border-radius:1px')}Even pace for today</span>`:''}</div>`:hold;
-  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done arranging':'Arrange boxes and delete categories'}</button>${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
-  return `${planCard}${goalsCard()}${spendBlock}${arrBar}${groupCards}
+  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done arranging':'Arrange boxes and delete categories'}</button>${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
+  return `${setupCard}${planCard}${goalsCard()}${spendBlock}${arrBar}${STARTER&&!arrange?`<div class="actions" style="margin:0 0 8px"><button class="btn small ghost" type="button" data-act="gall" data-v="1">Open all</button><button class="btn small ghost" type="button" data-act="gall" data-v="0">Close all</button></div>`:''}${groupCards}
    ${trendsHTML()}
    <section class="card"><h3>Check against your bank</h3>
     <p class="meta" style="margin:4px 0 10px">Compare these with the totals on your statement. They match when you have imported every transaction for the month.</p>
@@ -1744,6 +1776,13 @@ document.addEventListener('click',e=>{
     case 'editbudget':editB=b.dataset.name;render();{const i=$('#bedit');if(i){i.focus();i.select()}}break;
     case 'toggleempty':showEmpty=!showEmpty;render();break;
     case 'togcat':{const n=b.dataset.name;if(openCats.has(n))openCats.delete(n);else openCats.add(n);render();break}
+    case 'setuptoggle':S.setupHidden=!S.setupHidden;commit();break;
+    case 'tgroup':{const g=b.dataset.g,st=stats();const cs=(groupedCats().find(x=>x[0]===g)||[g,[]])[1],gp=sum(cs.map(c=>(planFor(curMonth).budgets||{})[c]||0)),gs=sum(cs.map(c=>st.spent[c]||0));
+      if(groupOpen0(g,gp,gs)){collapsedG.add(g);expandedG.delete(g)}else{expandedG.add(g);collapsedG.delete(g)}render();break}
+    case 'gall':{groupedCats().forEach(([g])=>{if(b.dataset.v==='1'){expandedG.add(g);collapsedG.delete(g)}else{collapsedG.add(g);expandedG.delete(g)}});render();break}
+    case 'setupincome':{const i=$('#newincname');if(i){i.scrollIntoView({block:'center'});i.focus()}break}
+    case 'setupamounts':groupedCats().forEach(([g])=>{expandedG.add(g);collapsedG.delete(g)});render();break;
+    case 'starterreset':resetStarterCats();break;
     case 'arrange':arrange=!arrange;delAsk=null;render();break;
     case 'gup':case 'gdown':{normGroups();const i=S.groups.findIndex(g=>g.name===b.dataset.g),j=a==='gup'?i-1:i+1;if(i<0||j<0||j>=S.groups.length)break;[S.groups[i],S.groups[j]]=[S.groups[j],S.groups[i]];commit();break}
     case 'cup':case 'cdown':{normGroups();const g=S.groups.find(x=>x.cats.includes(b.dataset.name));if(!g)break;const i=g.cats.indexOf(b.dataset.name),j=a==='cup'?i-1:i+1;if(j<0||j>=g.cats.length)break;[g.cats[i],g.cats[j]]=[g.cats[j],g.cats[i]];commit();break}
