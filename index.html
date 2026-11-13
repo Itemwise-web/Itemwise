@@ -648,7 +648,7 @@ const daysIn=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
 const monthShort=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{month:'short',timeZone:'UTC'});
 const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
-let expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
+let renaming=null,expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
 let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null;
 let view='review',openId=null,draft=null,curMonth=null,imp=null,qText='',delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
@@ -662,7 +662,36 @@ function resetStarterCats(){
   S.budgets={};S.cats.forEach(c=>{S.budgets[c]=old[c]||0});
   commit();toast('Categories reset to the new starter list. Your income and any amounts under matching names were kept.',snap);return true;
 }
-function normGroups(){S.groups=groupedCats().map(([name,cats])=>({name,cats:cats.slice()}))}
+function normGroups(){const mark={};(S.groups||[]).forEach(g=>{if(g.kind||g.fixed)mark[g.name]={kind:g.kind,fixed:g.fixed}});S.groups=groupedCats().map(([name,cats])=>({name,cats:cats.slice(),...(mark[name]||{})}))}
+/* Rename a category everywhere it is used. Returns an error message, or '' when done. */
+function renameCategory(o,n){
+  n=String(n||'').trim().slice(0,40);
+  if(!n)return 'Type a name.';
+  if(o==='Other')return 'Other is the catch-all for charges with nowhere to go, so it keeps its name.';
+  if(n===o)return '';
+  if(S.cats.some(c=>c.toLowerCase()===n.toLowerCase()&&c!==o)||n.toLowerCase()===DISP.toLowerCase())return 'You already have a category with that name.';
+  const snap=snapshot(),rn=c=>c===o?n:c,mv=ob=>{if(ob&&Object.prototype.hasOwnProperty.call(ob,o)){ob[n]=ob[o];delete ob[o]}};
+  S.cats=S.cats.map(rn);S.groups.forEach(g=>{g.cats=g.cats.map(rn)});
+  mv(S.budgets);Object.values(S.plans||{}).forEach(pl=>mv(pl.budgets));mv(S.track);
+  S.rules.forEach(r=>{if(r.cat===o)r.cat=n});
+  S.learned=S.learned||{};Object.keys(S.learned).forEach(k=>{if(S.learned[k]===o)S.learned[k]=n});
+  const fix=t=>{(t.allocations||[]).forEach(a=>{if(a.cat===o)a.cat=n});if(t.split&&t.split.lines)t.split.lines.forEach(l=>{if(l.cat===o)l.cat=n})};
+  S.txs.forEach(fix);(S.dismissed||[]).forEach(fix);
+  if(goalEdit===o)goalEdit=n;if(openCats.has(o)){openCats.delete(o);openCats.add(n)}
+  commit();toast(`${o} is now ${n}.`,snap);return '';
+}
+function renameGroup(o,n){
+  n=String(n||'').trim().slice(0,40);
+  if(!n)return 'Type a name.';
+  if(n===o)return '';
+  if(groupedCats().some(([g])=>g.toLowerCase()===n.toLowerCase()&&g!==o))return 'You already have a box with that name.';
+  normGroups();const g=S.groups.find(x=>x.name===o);if(!g)return 'That box was not found.';
+  const snap=snapshot();
+  if(o==='Savings')g.kind='savings';if(NO_PACE.has(o)&&g.kind!=='savings')g.fixed=true;
+  g.name=n;if(collapsedG.has(o)){collapsedG.delete(o);collapsedG.add(n)}if(expandedG.has(o)){expandedG.delete(o);expandedG.add(n)}
+  commit();toast(`${o} is now ${n}.`,snap);return '';
+}
+const renBox=(kind,name)=>`<div class="incrow" style="flex-wrap:wrap;border-top:0"><input type="text" id="ren-in" maxlength="40" value="${esc(name)}" aria-label="New name for ${esc(name)}" style="flex:1;min-width:160px"><span><button class="btn small primary" type="button" data-act="rensave" data-kind="${kind}" data-name="${esc(name)}">Save name</button> <button class="btn small ghost" type="button" data-act="rencancel">Cancel</button></span></div>`;
 function catUsage(n){let tx=0;S.txs.forEach(t=>{if((t.allocations||[]).some(a=>a.cat===n)||(t.split&&t.split.lines&&t.split.lines.some(l=>l.cat===n)))tx++});
   const rules=S.rules.filter(r=>r.cat===n&&r.mode==='cat').length;return {tx,rules}}
 /* Remove a category everywhere; its charges go back to Review. */
@@ -702,7 +731,7 @@ const groupOf=c=>{const g=(S.groups||[]).find(x=>x.cats.includes(c));return g?g.
 const ymAdd=(m,n)=>{const [y,mo]=m.split('-').map(Number);return new Date(Date.UTC(y,mo-1+n,1)).toISOString().slice(0,7)};
 function monthsFrom(a,b){const out=[];let m=a;while(m<=b&&out.length<240){out.push(m);m=ymAdd(m,1)}return out}
 function catSpentIn(c,m){let t0=0;S.txs.forEach(t=>{if(!t.date.startsWith(m)||t.status==='transfer'||t.status==='credit'||t.status==='review')return;(t.allocations||[]).forEach(a=>{if(a.cat===c)t0+=a.cents})});return t0}
-const savedPart=t=>t.status==='review'?0:sum((t.allocations||[]).filter(a=>groupOf(a.cat)==='Savings').map(a=>a.cents));
+const savedPart=t=>t.status==='review'?0:sum((t.allocations||[]).filter(a=>isSav(groupOf(a.cat))).map(a=>a.cents));
 /* Save-up categories: what is left each month is added to the next month's plan. */
 function rollInfo(c,m){
   const tr=(S.track||{})[c];if(!tr||!tr.roll)return null;
@@ -726,8 +755,10 @@ function goalInfo(c,m){
   return {target:g.target,by:g.by,saved,left,pct:g.target>0?Math.min(saved/g.target,1)*100:0,done:left===0,plan,contrib,monthLeft:Math.max(plan-contrib,0),monthsLeft,need:monthsLeft?Math.ceil(left/monthsLeft):left,moreMonths:plan>0?Math.ceil(left/plan):null};
 }
 const OVER_SLACK=100;   // up to $1.00 past a budget still counts as on track
-const NO_PACE=new Set(['Giving','Housing','Savings','Utilities','Subscriptions','Insurance']);
-function plannedSpend(m){const b=planFor(m).budgets;return sum(S.cats.filter(c=>groupOf(c)!=='Savings').map(c=>b[c]||0))}
+const NO_PACE=new Set(['Giving','Housing','Savings','Personal','Insurance','Utilities','Subscriptions']);
+const isSav=g=>g==='Savings'||(S.groups||[]).some(x=>x.name===g&&x.kind==='savings');
+const isNoPace=g=>NO_PACE.has(g)||(S.groups||[]).some(x=>x.name===g&&(x.fixed||x.kind==='savings'));
+function plannedSpend(m){const b=planFor(m).budgets;return sum(S.cats.filter(c=>!isSav(groupOf(c))).map(c=>b[c]||0))}
 /* A readable merchant name from noisy bank text: "WAL-MART #4108 DDA PIN POS PUR CD7544" becomes "Wal-Mart". */
 function niceName(desc){
   let d=String(desc).replace(/\s+/g,' ').trim();
@@ -750,7 +781,7 @@ function niceName(desc){
 }
 const STARTER=true;
 const groupOpen0=(g,gp,gs)=>!STARTER||arrange||expandedG.has(g)||(!collapsedG.has(g)&&(gp>0||gs>0));
-const VIEWS=[['overview','Overview'],['budgets','Budgets'],['activity','Activity'],['review','Review'],['import','Import'],['accounts','Accounts'],['rules','Rules'],['data','Data'],['more','More']];
+const VIEWS=[['overview','Overview'],['budgets','Budgets'],['activity','Activity'],['review','Review'],['import','Import'],['accounts','Accounts'],['rules','Rules'],['data','Data'],['more','More'],['tabs','Customize tabs']];
 const byDate=(a,b)=>b.date.localeCompare(a.date)||(b.id-a.id);
 let undoSnap=null;
 const snapshot=()=>JSON.stringify(S);
@@ -771,7 +802,7 @@ function stats(m){
     if(t.status==='credit')return;
     total+=t.cents+dispOf(t);
     if(t.status==='review'){unalloc+=t.cents;pending++;const c=fallbackCat(t);pendBy[c]=(pendBy[c]||0)+t.cents;return}
-    let sv=0;t.allocations.forEach(a=>{if(a.cat===DISP)return;spent[a.cat]=(spent[a.cat]||0)+a.cents;if(groupOf(a.cat)==='Savings')sv+=a.cents});
+    let sv=0;t.allocations.forEach(a=>{if(a.cat===DISP)return;spent[a.cat]=(spent[a.cat]||0)+a.cents;if(isSav(groupOf(a.cat)))sv+=a.cents});
     total-=sv;saved+=sv;
   });
   return {spent,pendBy,unalloc,pending,total,out,inn,n,xfer,saved,inBudgets:total-unalloc};
@@ -1082,17 +1113,28 @@ function renderStrip(){
     <div class="cell"><span class="lbl">In budgets</span><b>${fmt(st.inBudgets)}</b><small>of ${fmt(budgeted)} budgeted</small></div>
     ${st.pending?`<a class="cell attn" href="#review" aria-label="Needs review: ${fmt(st.unalloc)}, ${st.pending} purchases. Open Review"><span class="lbl">Needs review</span><b>${fmt(st.unalloc)}</b><small>${st.pending} purchase${st.pending===1?'':'s'}</small></a>`:`<div class="cell"><span class="lbl">Needs review</span><b>${fmt(st.unalloc)}</b><small>All clear</small></div>`}`;
 }
+const TAB_LABELS={overview:'Overview',budgets:'Budgets',activity:'Activity',review:'Review',import:'Import',accounts:'Accounts',rules:'Rules',data:'Data'};
+const TAB_DESC={overview:'Your dashboards: net worth, money available and more.',budgets:'Plans, income, goals and spending by category.',activity:'Every charge, to fix or add by hand.',review:'Charges that need a decision.',import:'Bring in a bank file or receipts.',accounts:'Bank, savings, investment and debt balances.',rules:'Which stores file themselves, plus your category names.',data:'Back up, restore or delete your data.'};
+const DEFAULT_TABS=['overview','budgets','activity','review','import','accounts','rules','data'];
+function tabCfg(){
+  const t=S.tabs||{},order=(Array.isArray(t.order)?t.order:[]).filter((k,i,a)=>TAB_LABELS[k]&&a.indexOf(k)===i);
+  DEFAULT_TABS.forEach(k=>{if(!order.includes(k))order.push(k)});
+  const hidden=(Array.isArray(t.hidden)?t.hidden:[]).filter(k=>TAB_LABELS[k]);
+  if(order.every(k=>hidden.includes(k)))hidden.length=0;
+  return {order,hidden};
+}
+/* The first five tabs you keep show in a phone's bottom bar; the rest wait under More. A computer shows every tab you keep, in your order. */
 function renderTabs(){
-  const n=lookCount();
-  $('#tabs').innerHTML=VIEWS.map(([k,l])=>{
-    const cur=k===view||(k==='more'&&(view==='rules'||view==='data'||view==='accounts'));
-    const cls=(k==='rules'||k==='data'||k==='accounts')?' class="only-d"':(k==='more'?' class="only-m"':'');
-    return `<a href="#${k}"${cls}${cur?' aria-current="page"':''}>${l}${k==='review'&&n?`<span class="count">${n}</span>`:''}</a>`;
-  }).join('');
+  const n=lookCount(),{order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5),over=order.filter(k=>!inBar.includes(k));
+  let h=vis.map((k,i)=>`<a href="#${k}"${i>=5?' class="only-d"':''}${k===view?' aria-current="page"':''}>${TAB_LABELS[k]}${k==='review'&&n?`<span class="count">${n}</span>`:''}</a>`).join('');
+  const moreCur=view==='more'||view==='tabs'||over.includes(view);
+  h+=`<a href="#more"${hidden.length?'':' class="only-m"'}${moreCur?' aria-current="page"':''}>More</a>`;
+  if(!hidden.length)h+=`<a href="#tabs" class="only-d" aria-label="Customize tabs" title="Customize tabs" style="flex:none;padding-left:10px;padding-right:10px">✎</a>`;
+  $('#tabs').innerHTML=h;
 }
 function render(){
   ensureMonth();renderNotice();renderMonthbar();renderStrip();renderTabs();
-  const fn={overview:viewOverview,accounts:viewAccounts,review:viewReview,budgets:viewBudgets,activity:viewActivity,import:viewImport,rules:viewRules,data:viewData,more:viewMore}[view]||viewReview;
+  const fn={tabs:viewTabs,overview:viewOverview,accounts:viewAccounts,review:viewReview,budgets:viewBudgets,activity:viewActivity,import:viewImport,rules:viewRules,data:viewData,more:viewMore}[view]||viewReview;
   $('#view').innerHTML=fn();
 }
 
@@ -1197,7 +1239,7 @@ function monthChart(budget){
    <div class="actions" style="margin-top:8px"><button class="btn small ghost" type="button" data-act="tbl">${showTbl?'Show chart':'View as table'}</button></div>`;
 }
 function composeHTML(st){
-  const items=S.cats.filter(c=>groupOf(c)!=='Savings').map(c=>({c,v:st.spent[c]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
+  const items=S.cats.filter(c=>!isSav(groupOf(c))).map(c=>({c,v:st.spent[c]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
   const tot=sum(items.map(x=>x.v)),mx=Math.max(...items.map(x=>x.v),1);
   let h=`<h3>Where the money went</h3>`;
   if(!items.length&&!st.unalloc)return h+`<div class="empty" style="margin-top:10px">No spending in ${monthLabel(curMonth)} yet.</div>`;
@@ -1260,12 +1302,12 @@ function viewBudgets(){
   const info=S.cats.map(c=>{const spent=st.spent[c]||0,pend=st.pendBy[c]||0,lim=B[c]||0,rb=rollInfo(c,curMonth),carry=rb?rb.carry:0;return {c,spent,pend,lim,carry,pct:lim?spent/lim:(spent>0?9:0)}});
   const byCat={};info.forEach(r=>{byCat[r.c]=r});
   const brow=r=>{
-    const {c,spent,pend,lim,carry}=r,cap=lim+carry,sav=groupOf(c)==='Savings',isOver=!sav&&spent>cap+OVER_SLACK,left=Math.max(cap-spent,0);
+    const {c,spent,pend,lim,carry}=r,cap=lim+carry,sav=isSav(groupOf(c)),isOver=!sav&&spent>cap+OVER_SLACK,left=Math.max(cap-spent,0);
     const a=cap>0?Math.min(Math.max(spent,0)/cap,1)*100:(spent>0?100:0);
     const b=cap>0?Math.min(pend/cap,1-a/100)*100:0;
     const chip=isOver?`<span class="chipstat bad">▲ Over by ${fmt(spent-cap)}</span>`:(spent>0?`<span class="chipstat good">✓ On track</span>`:'');
     const tick=(isCur&&lim>0)?`<i class="pace" style="left:${dayNow/dim*100}%" title="Where an even pace would be today"></i>`:'';
-    const proj=isCur&&!isOver&&dayNow>=5&&spent>0&&spent/dayNow*dim>lim&&!NO_PACE.has(groupOf(c));   // fixed bills are paid in one go, so a pace warning means nothing
+    const proj=isCur&&!isOver&&dayNow>=5&&spent>0&&spent/dayNow*dim>lim&&!isNoPace(groupOf(c));   // fixed bills are paid in one go, so a pace warning means nothing
     const perDay=(isCur&&!isOver&&left>0)?` · about ${fmt(Math.round(left/daysLeft))} a day`:'';
     const dl=(!isCur&&pst&&(spent||pst.spent[c]))?(()=>{const d=spent-(pst.spent[c]||0);return `<span>${d===0?'Same as':(d>0?'▲ '+fmt(d)+' vs':'▼ '+fmt(-d)+' vs')} ${monthShort(prev)}</span>`})():'';
     const limCtl=editB===c?`$<input type="number" min="0" step="10" id="bedit" data-budget="${esc(c)}" value="${lim/100}" aria-label="${esc(c)} budget in dollars">`:`<button class="lim" type="button" data-act="editbudget" data-name="${esc(c)}" aria-label="Edit ${esc(c)} budget, now ${fmt(lim)}">${fmt(lim)}</button>`;
@@ -1296,7 +1338,7 @@ function viewBudgets(){
     return `<div class="incrow"><span>${nameBtn(c)}</span><span>${ctl}${r.carry?` <span class="meta">${r.carry>0?'+ '+fmt(r.carry)+' saved up':'− '+fmt(-r.carry)+' from last month'}</span>`:''}</span></div>`;
   };
   const incs=(plan.income||[]).map(i=>plan.key===curMonth?i:({...i,rec:[]})),incTotal=sum(incs.map(i=>i.cents));
-  const saveT=sum(S.cats.filter(c=>groupOf(c)==='Savings').map(c=>B[c]||0));
+  const saveT=sum(S.cats.filter(c=>isSav(groupOf(c))).map(c=>B[c]||0));
   const extraTx=S.txs.filter(t=>t.date.startsWith(curMonth)&&dispOf(t)>0).sort(byDate),extraT=sum(extraTx.map(dispOf));
   const dispExp=plan.disp>0?plan.disp:0;
   const leftToBudget=incTotal-budgeted-saveT;
@@ -1338,7 +1380,7 @@ function viewBudgets(){
   const hasTx=st.n>0;
   const gnames=groupedCats().map(x=>x[0]);
   const arrRow=(c,i,n)=>{const u=delAsk===c?catUsage(c):null;
-    return `<div class="incrow" style="flex-wrap:wrap"><span>${esc(c)} <span class="meta">${fmt(B[c]||0)} planned</span></span><span><button class="btn small ghost" type="button" data-act="cup" data-name="${esc(c)}"${i?'':' disabled'} aria-label="Move ${esc(c)} up">▲</button> <button class="btn small ghost" type="button" data-act="cdown" data-name="${esc(c)}"${i<n-1?'':' disabled'} aria-label="Move ${esc(c)} down">▼</button> <select data-cmove="${esc(c)}" aria-label="Move ${esc(c)} to another box">${gnames.map(g=>`<option${g===groupOf(c)?' selected':''}>${esc(g)}</option>`).join('')}</select> ${c==='Other'?'':`<button class="btn small ghost" type="button" data-act="cdel" data-name="${esc(c)}">Delete</button>`}</span></div>${u?`<div class="status bad" style="margin:4px 0"><span>Delete ${esc(c)}? ${u.tx?`${u.tx} charge${u.tx===1?'':'s'} will go back to Review`:'No charges use it'}${u.rules?` and ${u.rules} rule${u.rules===1?'':'s'} will be removed`:''}. You can undo it.</span> <button class="btn small" type="button" data-act="cdelyes" data-name="${esc(c)}">Delete it</button> <button class="btn small ghost" type="button" data-act="cdelno">Keep it</button></div>`:''}`};
+    return `<div class="incrow" style="flex-wrap:wrap"><span>${esc(c)} <span class="meta">${fmt(B[c]||0)} planned</span></span><span><button class="btn small ghost" type="button" data-act="cup" data-name="${esc(c)}"${i?'':' disabled'} aria-label="Move ${esc(c)} up">▲</button> <button class="btn small ghost" type="button" data-act="cdown" data-name="${esc(c)}"${i<n-1?'':' disabled'} aria-label="Move ${esc(c)} down">▼</button> <select data-cmove="${esc(c)}" aria-label="Move ${esc(c)} to another box">${gnames.map(g=>`<option${g===groupOf(c)?' selected':''}>${esc(g)}</option>`).join('')}</select> ${c==='Other'?'':`<button class="btn small ghost" type="button" data-act="renstart" data-kind="cat" data-name="${esc(c)}">Rename</button> <button class="btn small ghost" type="button" data-act="cdel" data-name="${esc(c)}">Delete</button>`}</span></div>${u?`<div class="status bad" style="margin:4px 0"><span>Delete ${esc(c)}? ${u.tx?`${u.tx} charge${u.tx===1?'':'s'} will go back to Review`:'No charges use it'}${u.rules?` and ${u.rules} rule${u.rules===1?'':'s'} will be removed`:''}. You can undo it.</span> <button class="btn small" type="button" data-act="cdelyes" data-name="${esc(c)}">Delete it</button> <button class="btn small ghost" type="button" data-act="cdelno">Keep it</button></div>`:''}${renaming&&renaming.kind==='cat'&&renaming.name===c?renBox('cat',c):''}`};
   const hasIncome=((planFor(curMonth).income)||[]).length>0,hasAmounts=Object.values(planFor(curMonth).budgets||{}).some(v=>v>0);
   const setupSteps=[[hasIncome,'Add your income','So the plan knows what there is to give a job.',`<button class="btn small primary" type="button" data-act="setupincome">Add income</button>`],
     [hasAmounts,'Set what you plan to spend','Tap a box below, then a category, and type an amount. Zeros are fine to start.',`<button class="btn small" type="button" data-act="setupamounts">Open all boxes</button>`],
@@ -1351,7 +1393,7 @@ function viewBudgets(){
     :`<section class="card" style="margin-bottom:16px;border-color:var(--accent)"><div class="ghead"><h3 style="margin:0">Get set up</h3><button class="btn small ghost" type="button" data-act="setuptoggle" aria-label="Hide the setup guide">Hide</button></div><div role="img" aria-label="${nDone} of ${setupSteps.length} steps done" style="height:6px;border-radius:3px;background:var(--line);margin:8px 0 10px;overflow:hidden"><div style="width:${nDone/setupSteps.length*100}%;height:100%;background:var(--accent)"></div></div>${setupSteps.map((x,i)=>`<div class="incrow" style="flex-wrap:wrap"><span><b style="color:${x[0]?'var(--ok)':'var(--neutral)'}">${x[0]?'✓':'○'}</b> ${i+1}. <b>${x[1]}</b><br><span class="meta">${x[2]}</span></span><span>${x[0]?'':x[3]}</span></div>`).join('')}</section>`):'';
   const groupOpen=(g,gp,gs)=>!STARTER||arrange||expandedG.has(g)||(!collapsedG.has(g)&&(gp>0||gs>0));
   const groupCards=groupedCats().map(([g,cs],gi)=>{
-    if(arrange){const gp0=sum(cs.map(c=>B[c]||0));return `<section class="card" style="margin-bottom:16px"><div class="ghead"><h3 style="margin:0">${esc(g)}</h3><span class="gsum"><span class="meta">${fmt(gp0)}</span><button class="btn small ghost" type="button" data-act="gup" data-g="${esc(g)}"${gi?'':' disabled'} aria-label="Move ${esc(g)} box up">▲</button><button class="btn small ghost" type="button" data-act="gdown" data-g="${esc(g)}"${gi<gnames.length-1?'':' disabled'} aria-label="Move ${esc(g)} box down">▼</button></span></div>${cs.map((c,i)=>arrRow(c,i,cs.length)).join('')}</section>`}
+    if(arrange){const gp0=sum(cs.map(c=>B[c]||0));return `<section class="card" style="margin-bottom:16px"><div class="ghead"><h3 style="margin:0">${esc(g)}</h3><span class="gsum"><span class="meta">${fmt(gp0)}</span><button class="btn small ghost" type="button" data-act="renstart" data-kind="group" data-name="${esc(g)}">Rename</button><button class="btn small ghost" type="button" data-act="gup" data-g="${esc(g)}"${gi?'':' disabled'} aria-label="Move ${esc(g)} box up">▲</button><button class="btn small ghost" type="button" data-act="gdown" data-g="${esc(g)}"${gi<gnames.length-1?'':' disabled'} aria-label="Move ${esc(g)} box down">▼</button></span></div>${renaming&&renaming.kind==='group'&&renaming.name===g?renBox('group',g):''}${cs.map((c,i)=>arrRow(c,i,cs.length)).join('')}</section>`}
     const gp=sum(cs.map(c=>B[c]||0)),gs=sum(cs.map(c=>(byCat[c]||{}).spent||0));
     const rows=cs.map(c=>{const r=byCat[c];return ((r.spent!==0||r.pend>0)?brow(r):crow(r))+catList(c)}).join('');
     const op=groupOpen(g,gp,gs),sums=`<span class="gsum"><span class="meta">Planned</span><b class="mono">${fmt(gp)}</b>${gs?`<span class="meta">Spent</span><b class="mono">${fmt(gs)}</b>`:''}</span>`;
@@ -1367,7 +1409,7 @@ function viewBudgets(){
    <div class="cols"><section class="card"><h3>Month so far</h3><p class="meta" style="margin:2px 0 8px">Your running total against your whole plan. Hover or drag across it for any day.</p>${monthChart(budgeted)}</section>
    <section class="card">${composeHTML(st)}</section></div>
    <div class="legend" style="margin:0 0 10px"><span>${sw('var(--ok)')}Within plan</span><span>${sw('var(--bad)')}Over</span><span>${sw('repeating-linear-gradient(135deg,var(--neutral) 0 3px,transparent 3px 6px)')}Waiting for review</span>${isCur?`<span>${sw('var(--ink)','width:2px;height:12px;opacity:.55;border-radius:1px')}Even pace for today</span>`:''}</div>`:hold;
-  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done arranging':'Arrange boxes and delete categories'}</button>${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
+  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done editing':'Edit boxes and categories'}</button>${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
   return `${setupCard}${planCard}${goalsCard()}${spendBlock}${arrBar}${STARTER&&!arrange?`<div class="actions" style="margin:0 0 8px"><button class="btn small ghost" type="button" data-act="gall" data-v="1">Open all</button><button class="btn small ghost" type="button" data-act="gall" data-v="0">Close all</button></div>`:''}${groupCards}
    ${trendsHTML()}
    <section class="card"><h3>Check against your bank</h3>
@@ -1400,7 +1442,7 @@ function actList(){
   return list.map(t=>{
     const [pl,pc]=pillOf(t);
     let cat;
-    if(t.status==='transfer'&&t.cents>0)cat=`<span class="pill ${pc}">${pl}</span><select data-actcat="${t.id}" aria-label="Count ${esc(niceName(t.desc))} as savings"><option value="">Count as savings in…</option>${S.cats.filter(c=>groupOf(c)==='Savings'||((S.track||{})[c]&&S.track[c].goal)).map(c=>`<option>${esc(c)}</option>`).join('')}</select>`;
+    if(t.status==='transfer'&&t.cents>0)cat=`<span class="pill ${pc}">${pl}</span><select data-actcat="${t.id}" aria-label="Count ${esc(niceName(t.desc))} as savings"><option value="">Count as savings in…</option>${S.cats.filter(c=>isSav(groupOf(c))||((S.track||{})[c]&&S.track[c].goal)).map(c=>`<option>${esc(c)}</option>`).join('')}</select>`;
     else if(t.status==='transfer'||t.status==='credit')cat=`<span class="pill ${pc}">${pl}</span>`;
     else if(t.status==='review')cat=`<span class="pill warn">Needs review</span><select data-actcat="${t.id}" aria-label="Choose a category for ${esc(niceName(t.desc))}"><option value="">Choose category</option>${catOpts('')}</select>`;
     else if(t.split||(t.allocations||[]).length!==1)cat=`<span class="pill accent">Split</span><span class="chips">${t.allocations.map(a=>`<span class="chip">${esc(a.cat)} ${fmt(a.cents)}</span>`).join('')}</span>`;
@@ -1515,15 +1557,21 @@ function viewRules(){
    <section class="card" style="margin-bottom:16px"><h3>Merchant rules</h3>
     <div class="actions" style="margin:8px 0 12px"><label>Stores set to "Ask me to split" only ask for charges over $<input type="number" min="0" step="1" id="thr" value="${S.cfg.threshold/100}" style="width:80px;text-align:right"></label></div>${rows||'<p class="meta">No rules yet.</p>'}
     <div class="actions"><input type="text" id="newpat" placeholder="Text to match, like TRADER JOE" style="text-transform:uppercase;min-width:220px" aria-label="New rule text"><select id="newmode"><option value="cat">File under</option><option value="ask">Ask me to split</option><option value="askall">Ask every time</option><option value="transfer">Transfer</option></select><select id="newcat" aria-label="New rule category">${catOpts(S.cats[0])}</select><button class="btn" type="button" data-act="addrule">Add rule</button></div></section>
-   <section class="card" style="margin-bottom:16px"><h3>Categories</h3>${groupedCats().map(([g,cs])=>`<div class="sub">${esc(g)}</div><div class="learned" style="margin:6px 0">${cs.map(c=>`<span>${esc(c)}${used.has(c)?'':`<button type="button" data-act="rmcat" data-name="${esc(c)}" aria-label="Remove ${esc(c)}">×</button>`}</span>`).join('')}</div>`).join('')}<div class="actions"><input type="text" id="newcatname" placeholder="New category" aria-label="New category name"><select id="newcatgroup" aria-label="Group">${(S.groups||[]).map(g=>`<option>${esc(g.name)}</option>`).join('')}</select><button class="btn" type="button" data-act="addcat">Add category</button></div><p class="meta" style="margin:8px 0 0">Categories in use can't be removed. Amounts live in the Budgets tab.</section>
+   <section class="card" style="margin-bottom:16px"><h3>Categories</h3>${renaming?renBox(renaming.kind,renaming.name):''}${groupedCats().map(([g,cs])=>`<div class="sub">${esc(g)} <button type="button" class="btn small ghost" data-act="renstart" data-kind="group" data-name="${esc(g)}" aria-label="Rename ${esc(g)}">Rename</button></div><div class="learned" style="margin:6px 0">${cs.map(c=>`<span>${esc(c)}${c==='Other'?'':`<button type="button" data-act="renstart" data-kind="cat" data-name="${esc(c)}" aria-label="Rename ${esc(c)}">✎</button>`}${used.has(c)?'':`<button type="button" data-act="rmcat" data-name="${esc(c)}" aria-label="Remove ${esc(c)}">×</button>`}</span>`).join('')}</div>`).join('')}<div class="actions"><input type="text" id="newcatname" placeholder="New category" aria-label="New category name"><select id="newcatgroup" aria-label="Group">${(S.groups||[]).map(g=>`<option>${esc(g.name)}</option>`).join('')}</select><button class="btn" type="button" data-act="addcat">Add category</button></div><p class="meta" style="margin:8px 0 0">Tap Rename on a box, or ✎ on a category, to change its name everywhere. Categories in use can't be removed here. Amounts live in the Budgets tab.</section>
    <section class="card"><h3>Remembered items</h3><p class="meta" style="margin:4px 0 12px">Items you categorized on earlier receipts are pre-filled next time.</p>
     ${learned.length?`<div class="learned">${learned.map(([n,c])=>`<span>${esc(n)} → ${esc(c)}<button type="button" data-act="unlearn" data-name="${esc(n)}" aria-label="Forget ${esc(n)}">×</button></span>`).join('')}</div>`:'<p class="meta">Nothing remembered yet. Save a split with "Remember my category" checked.</p>'}</section>`;
 }
 
 function viewMore(){
-  return `<div class="stack"><section class="card"><h3>Accounts and investments</h3><p class="meta" style="margin:4px 0 10px">Bank, savings, investment and debt balances, for net worth and money available.</p><a class="btn" href="#accounts">Open accounts</a></section>
-  <section class="card"><h3>Rules</h3><p class="meta" style="margin:4px 0 10px">Which stores file themselves, which ask you, and your categories.</p><a class="btn" href="#rules">Open rules</a></section>
-  <section class="card"><h3>Your data</h3><p class="meta" style="margin:4px 0 10px">Back up or restore your budget.</p><a class="btn" href="#data">Open backup and restore</a></section></div>`;
+  const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5),over=order.filter(k=>!inBar.includes(k));
+  return `<div class="stack">${over.map(k=>`<section class="card"><h3>${TAB_LABELS[k]}</h3><p class="meta" style="margin:4px 0 10px">${TAB_DESC[k]}</p><a class="btn" href="#${k}">Open ${TAB_LABELS[k].toLowerCase()}</a></section>`).join('')}
+  <section class="card"><h3>Customize tabs</h3><p class="meta" style="margin:4px 0 10px">Choose which tabs show along the top and put them in your order.</p><a class="btn" href="#tabs">Customize tabs</a></section></div>`;
+}
+function viewTabs(){
+  const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5);
+  return `<p class="lede">Put your tabs in the order you like and hide the ones you do not use. On a phone the first five you keep fill the bottom bar, and the rest wait under More. On a computer, every tab you keep shows along the top.</p>
+  <section class="card">${order.map((k,i)=>`<div class="incrow" style="flex-wrap:wrap"><span><b>${TAB_LABELS[k]}</b>${hidden.includes(k)?' <span class="pill">hidden</span>':(inBar.includes(k)?' <span class="meta">in the phone bar</span>':' <span class="meta">under More on a phone</span>')}<br><span class="meta">${TAB_DESC[k]}</span></span><span><button class="btn small ghost" type="button" data-act="tabup" data-k="${k}"${i?'':' disabled'} aria-label="Move ${TAB_LABELS[k]} earlier">▲</button> <button class="btn small ghost" type="button" data-act="tabdown" data-k="${k}"${i<order.length-1?'':' disabled'} aria-label="Move ${TAB_LABELS[k]} later">▼</button> <button class="btn small" type="button" data-act="tabtog" data-k="${k}">${hidden.includes(k)?'Show':'Hide'}</button></span></div>`).join('')}</section>
+  <div class="actions" style="margin-top:12px"><button class="btn small ghost" type="button" data-act="tabreset">Put tabs back the way they were</button></div>`;
 }
 function viewData(){
   return `<p class="lede">${typeof syncOn==='function'&&syncOn()?'Your plan, charges and rules are saved to your own private space on this page and update on every device where you open it while signed in. A copy is also kept in each browser. Still keep a backup now and then.':'Sync is not connected right now, so your latest changes are only in this browser. Clearing site data erases them, so keep a backup.'}</p>
@@ -1730,7 +1778,7 @@ const WIDGETS={
     if(!planned&&!spent)return wcard('Spending this month',`<p class="meta" style="margin:6px 0 0">Nothing planned or spent yet for ${monthLabel(curMonth)}.</p>`);
     return wcard('Spending this month',`<div class="two"><div><div class="meta">Spent</div><div class="amt" style="font-size:18px">${fmt(spent)}</div></div><div><div class="meta">Planned</div><div class="amt" style="font-size:18px">${fmt(planned)}</div></div></div>${bar(planned?spent/planned*100:100,over?'var(--bad)':'var(--accent)')}<p class="meta" style="margin:6px 0 0">${over?fmt(spent-planned)+' over plan.':fmt(Math.max(planned-spent,0))+' left in the plan.'}</p>`)}},
   topcats:{t:'Biggest categories',d:'Where this month’s money went',r(){
-    const st=stats(),list=S.cats.filter(c=>groupOf(c)!=='Savings'&&(st.spent[c]||0)>0).map(c=>[c,st.spent[c]]).sort((a,b)=>b[1]-a[1]).slice(0,6),mx=list.length?list[0][1]:1;
+    const st=stats(),list=S.cats.filter(c=>!isSav(groupOf(c))&&(st.spent[c]||0)>0).map(c=>[c,st.spent[c]]).sort((a,b)=>b[1]-a[1]).slice(0,6),mx=list.length?list[0][1]:1;
     if(!list.length)return wcard('Biggest categories',`<p class="meta" style="margin:6px 0 0">No spending filed yet for ${monthLabel(curMonth)}.</p>`);
     return wcard('Biggest categories',list.map(([c,v])=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between"><span>${esc(c)}</span><span>${fmt(v)}</span></div>${bar(v/mx*100)}</div>`).join(''))}},
   goals:{t:'Goals and saved-up money',d:'Your savings goals and funds that carry over',r(){return goalsCard()||wcard('Goals and saved-up money',`<p class="meta" style="margin:6px 0 0">No goals or saved-up funds yet. Set one from a category on the Budgets tab.</p>`)}}
@@ -1782,6 +1830,12 @@ document.addEventListener('click',e=>{
     case 'gall':{groupedCats().forEach(([g])=>{if(b.dataset.v==='1'){expandedG.add(g);collapsedG.delete(g)}else{collapsedG.add(g);expandedG.delete(g)}});render();break}
     case 'setupincome':{const i=$('#newincname');if(i){i.scrollIntoView({block:'center'});i.focus()}break}
     case 'setupamounts':groupedCats().forEach(([g])=>{expandedG.add(g);collapsedG.delete(g)});render();break;
+    case 'renstart':renaming={kind:b.dataset.kind,name:b.dataset.name};render();{const i=$('#ren-in');if(i){i.focus();i.select()}}break;
+    case 'rencancel':renaming=null;render();break;
+    case 'rensave':{const v=($('#ren-in')||{}).value,msg=b.dataset.kind==='group'?renameGroup(b.dataset.name,v):renameCategory(b.dataset.name,v);if(msg){toast(msg);break}renaming=null;render();break}
+    case 'tabup':case 'tabdown':{const c=tabCfg(),k=b.dataset.k,i=c.order.indexOf(k),j=a==='tabup'?i-1:i+1;if(i<0||j<0||j>=c.order.length)break;[c.order[i],c.order[j]]=[c.order[j],c.order[i]];S.tabs={order:c.order,hidden:c.hidden};commit();break}
+    case 'tabtog':{const c=tabCfg(),k=b.dataset.k,i=c.hidden.indexOf(k);if(i>=0)c.hidden.splice(i,1);else{if(c.order.filter(x=>!c.hidden.includes(x)).length<=1){toast('Keep at least one tab showing.');break}c.hidden.push(k)}S.tabs={order:c.order,hidden:c.hidden};commit();break}
+    case 'tabreset':S.tabs=undefined;delete S.tabs;commit();toast('Tabs are back in their original order.');break;
     case 'starterreset':resetStarterCats();break;
     case 'arrange':arrange=!arrange;delAsk=null;render();break;
     case 'gup':case 'gdown':{normGroups();const i=S.groups.findIndex(g=>g.name===b.dataset.g),j=a==='gup'?i-1:i+1;if(i<0||j<0||j>=S.groups.length)break;[S.groups[i],S.groups[j]]=[S.groups[j],S.groups[i]];commit();break}
@@ -1921,6 +1975,8 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&editB!==null){editB=null;render()}
+  if(e.key==='Enter'&&e.target.id==='ren-in'){e.preventDefault();const bt=document.querySelector('[data-act="rensave"]');if(bt)bt.click()}
+  if(e.key==='Escape'&&e.target.id==='ren-in'){renaming=null;render()}
   if(e.key==='Enter'&&(e.target.id==='af-desc'||e.target.id==='af-amt')){e.preventDefault();addManual()}
   if(e.key==='Enter'&&(e.target.id==='newincname'||e.target.id==='newincamt')){e.preventDefault();const b=document.querySelector('[data-act="addinc"]');if(b)b.click()}
 });
