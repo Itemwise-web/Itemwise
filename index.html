@@ -1664,24 +1664,36 @@ function applyBank(p){
   const acctOf={};S.accts.forEach(a=>{if(a.pl)acctOf[a.pl]=a});
   const have=new Set(S.txs.map(t=>t.pid).filter(Boolean)),gone=new Set((S.dismissed||[]).map(t=>t.pid).filter(Boolean));
   if(!S.bankFrom)S.bankFrom=defaultBankFrom();
-  const rows=(p.added||[]).filter(t=>!t.pending&&t.date&&t.date>=S.bankFrom&&Number.isFinite(t.amount)&&!have.has(t.transaction_id)&&!gone.has(t.transaction_id)).map(t=>({date:t.date,desc:String(t.name||'Bank charge').slice(0,80),cents:Math.round(t.amount*100),pid:t.transaction_id,acct:t.account_id}));
+  const outcome={},rows=[];
+  (p.added||[]).forEach(t=>{
+    const id=t.transaction_id;
+    if(t.pending){outcome[id]='still pending at the bank';return}
+    if(!t.date||!Number.isFinite(t.amount)){outcome[id]='could not be read';return}
+    if(t.date<S.bankFrom){outcome[id]='before your start date';return}
+    if(have.has(id)){outcome[id]='already in your budget';return}
+    if(gone.has(id)){outcome[id]='you removed it earlier';return}
+    rows.push({date:t.date,desc:String(t.name||'Bank charge').slice(0,80),cents:Math.round(t.amount*100),pid:id,acct:t.account_id});
+  });
   const dd=dedupe(rows,S.txs.concat(S.dismissed||[]));
   const dayDiff=(x,y)=>Math.abs((Date.parse(x+'T12:00:00Z')-Date.parse(y+'T12:00:00Z'))/864e5);
   const mine=S.txs.filter(t=>t.entered),usedE=new Set(),fresh2=[];
   dd.fresh.forEach(r=>{
     const m=mine.find(t=>!usedE.has(t.id)&&t.cents===r.cents&&dayDiff(t.date,r.date)<=4);
-    if(m){usedE.add(m.id);m.desc=r.desc;m.date=r.date;m.pid=r.pid;m.acct=r.acct;delete m.entered;if(!m.manual)Object.assign(m,evaluateTx(m,S));sum0.matched++}else fresh2.push(r);
+    if(m){usedE.add(m.id);m.desc=r.desc;m.date=r.date;m.pid=r.pid;m.acct=r.acct;delete m.entered;if(!m.manual)Object.assign(m,evaluateTx(m,S));sum0.matched++;outcome[r.pid]='matched a charge you typed in'}else fresh2.push(r);
   });
   /* The bank names a charge differently than a file does ("Chick-fil-A" vs "CHICK-FIL-A #0412"). The same amount within 3 days of a charge you already have is that charge. */
   const near=S.txs.filter(t=>!t.pid&&t.src!=='bank'),usedN=new Set(),fresh3=[];
-  fresh2.forEach(r=>{const m=near.find(t=>!usedN.has(t.id)&&t.cents===r.cents&&dayDiff(t.date,r.date)<=3);if(m){usedN.add(m.id);m.pid=r.pid;m.acct=r.acct;sum0.matched++}else fresh3.push(r)});
+  fresh2.forEach(r=>{const m=near.find(t=>!usedN.has(t.id)&&t.cents===r.cents&&dayDiff(t.date,r.date)<=3);if(m){usedN.add(m.id);m.pid=r.pid;m.acct=r.acct;sum0.matched++;outcome[r.pid]='same amount within 3 days of a charge you had'}else fresh3.push(r)});
   const added=fresh3.map(r=>{const t={id:++S.seq,date:r.date,desc:r.desc,cents:r.cents,manual:false,pid:r.pid,acct:r.acct,src:'bank'};Object.assign(t,evaluateTx(t,S));S.txs.push(t);return t});
   /* a charge already imported from a file counts as seen, so the same one is not added again later */
   dd.skipped.forEach(r=>{const x=S.txs.find(t=>!t.pid&&t.date===r.date&&t.cents===r.cents&&normKey(t.desc)===normKey(r.desc));if(x){x.pid=r.pid;x.acct=r.acct}});
+  added.forEach(t=>{outcome[t.pid]='new'});dd.skipped.forEach(r=>{outcome[r.pid]='same as a charge you already had';sum0.matched++});
   sum0.added=added.length;sum0.review=added.filter(t=>t.status==='review').length;
   (p.modified||[]).forEach(m=>{const t=S.txs.find(x=>x.pid===m.transaction_id);if(!t||t.manual||m.pending)return;if(['review','guess','auto','credit','transfer'].includes(t.status)){t.date=m.date;t.cents=Math.round(m.amount*100);t.desc=String(m.name||t.desc).slice(0,80);Object.assign(t,evaluateTx(t,S));sum0.modified++}});
   const rm=new Set(p.removed||[]);
   if(rm.size){const before=S.txs.length;S.txs=S.txs.filter(t=>!(t.pid&&rm.has(t.pid)&&!t.manual));sum0.removed=before-S.txs.length}
+  const cnt=o=>Object.values(outcome).filter(x=>x===o).length;
+  sum0.pending=cnt('still pending at the bank');sum0.old=cnt('before your start date');sum0.seen=cnt('already in your budget');
   if(sum0.accounts)recordSnap();
   const latest=added.map(t=>t.date.slice(0,7)).sort().pop();if(latest)curMonth=latest;
   save();render();

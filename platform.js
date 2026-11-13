@@ -371,21 +371,20 @@
   }
   async function bankSync(auto, reset) {
     if (bankState.busy) return; bankState.busy = true; bankState.error = ''; bankState.reconnect = ''; bankTell();
-    let added = 0, review = 0, accounts = 0, pend = false;
+    let pend = false;
     for (const it of bankState.items.slice()) {
       for (let page = 0; page < 6; page++) {
         const r = await bankCall('sync', Object.assign({ item_id: it.item_id }, (reset && page === 0) ? { reset: true } : {}));
         if (!r.ok) { bankFail(r, it.item_id); break; }
-        let sm = { added: 0, review: 0, accounts: 0 };
-        try { sm = (window.iwApplyBank && window.iwApplyBank(r.data)) || sm; } catch (e) { bankState.error = 'Could not add the bank data. Nothing was lost; try again.'; break; }
-        added += sm.added; review += sm.review; accounts += sm.accounts; pend = pend || !!r.data.pending;
+        try { if (window.iwApplyBank) window.iwApplyBank(r.data); } catch (e) { bankState.error = 'Could not add the bank data. Nothing was lost; try again.'; break; }
+        pend = pend || !!r.data.pending;
         if (!r.data.pending) await bankCall('ack', { item_id: it.item_id, cursor: r.data.next_cursor });
         if (!r.data.more) break;
       }
     }
     bankState.busy = false; bankState.last = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
     try { localStorage.setItem('iw.plaid.last', String(Date.now())); } catch (e) {}
-    if (!auto && !bankState.error && window.toast) window.toast(pend ? 'Your bank is still preparing its data. Try Sync now again in a few minutes.' : (added ? added + ' new charge' + (added === 1 ? '' : 's') + ' came in' + (review ? ', ' + review + ' need your decision.' : '.') : 'Up to date.'));
+    if (!auto && !bankState.error && window.toast) window.toast(pend ? 'Your bank is still preparing its data. Try again in a few minutes.' : 'Bank updated.');
     bankTell();
   }
   async function bankOpen(token, onDone) {
@@ -429,8 +428,21 @@
       if (tok) { try { await loadPlaid(); window.Plaid.create({ token: tok, receivedRedirectUri: location.href, onSuccess: async (pt, meta) => { const x = await bankCall('exchange', { public_token: pt, institution_name: meta && meta.institution && meta.institution.name }); if (x.ok) { await bankRefresh(); await bankSync(false); } else { bankFail(x); bankTell(); } }, onExit: () => {} }).open(); } catch (e) {} }
       try { history.replaceState(null, '', location.pathname); } catch (e) {}
     }
-    let last = 0; try { last = +localStorage.getItem('iw.plaid.last') || 0; } catch (e) {}
-    if (bank.available && bankState.enabled && bankState.items.length && Date.now() - last > 6 * 36e5) bankSync(true);
+    if (!(bank.available && bankState.enabled && bankState.items.length)) return;
+    const num = k => { try { return +localStorage.getItem(k) || 0; } catch (e) { return 0; } };
+    const nav = (window.performance && performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || {};
+    if (nav.type === 'reload' && Date.now() - num('iw.plaid.refresh') > 5 * 60e3) await bankFetchNow();   // you pressed refresh: have the bank checked right now
+    else if (Date.now() - num('iw.plaid.last') > 60e3) bankSync(true);
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && bankState.items.length && Date.now() - num('iw.plaid.last') > 30 * 60e3) bankSync(true); });
+  }
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  /* Ask Plaid to fetch from each bank now, give it a few seconds, then bring the charges in; once more shortly after for slower banks. */
+  async function bankFetchNow() {
+    try { localStorage.setItem('iw.plaid.refresh', String(Date.now())); } catch (e) {}
+    await Promise.all(bankState.items.map(it => bankCall('refresh', { item_id: it.item_id })));
+    await sleep(cfg.REFRESH_WAIT_MS != null ? cfg.REFRESH_WAIT_MS : 6000);
+    await bankSync(true);
+    setTimeout(() => bankSync(true), cfg.REFRESH_SECOND_MS != null ? cfg.REFRESH_SECOND_MS : 25000);
   }
 
   async function done(s) {
