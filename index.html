@@ -248,7 +248,7 @@ table.prev th,table.prev td{text-align:left;padding:5px 8px;border-top:1px solid
 table.prev th{font-size:12px;color:var(--muted);font-weight:500;border-top:0}
 table.prev td.r,table.prev th.r{text-align:right}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:min(520px,calc(100vw - 32px));box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;max-width:min(520px,calc(100vw - 32px));box-shadow:0 6px 24px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .2s;z-index:90}
 .toast{display:flex;align-items:center;gap:12px}.toast.show{opacity:1;pointer-events:auto}
 .toast button{background:transparent;border:1px solid currentColor;border-radius:6px;padding:2px 10px;color:inherit;font-weight:600}
 @media (prefers-reduced-motion:reduce){.toast{transition:none}}
@@ -345,6 +345,68 @@ table.prev td.r,table.prev th.r{text-align:right}
 .sbtn{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:2px;text-align:left;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);min-height:56px}
 .sbtn:hover{border-color:var(--accent)}.sbtn b{font-weight:600}.sbtn span{font-size:13px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.sheetp{animation:none}}
+
+/* Edit panels, search bar, computer sidebar */
+.sheetp.wide{max-width:640px;padding-top:12px}
+.ptop{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;position:sticky;top:-12px;background:var(--surface);padding:6px 0;z-index:2}
+.ptop h3{margin:0;overflow-wrap:anywhere}
+.pbody .catlist{margin-left:0;border-left:0;padding-left:0}
+.pbody .receipt{margin-top:0}
+.afilters{position:sticky;top:0;z-index:6;background:var(--bg);padding:8px 0 2px;margin:0 0 8px}
+.searchrow{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.searchrow input[type=search]{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px}
+.afilters .fchips{margin:0;padding-bottom:8px}
+.asum{padding:2px 0 10px;font-size:13px;color:var(--muted)}
+.asum b{color:var(--ink)}
+@media (min-width:960px){
+  .wrap{max-width:1280px;display:grid;grid-template-columns:230px minmax(0,1fr);grid-template-rows:auto auto auto auto 1fr;column-gap:36px;align-items:start;padding-top:28px}
+  .wrap>.top{grid-column:1;grid-row:1;margin-bottom:12px}
+  .wrap>#notice{grid-column:2;grid-row:1}
+  .wrap>#monthbar{grid-column:2;grid-row:2}
+  .wrap>#tally{grid-column:2;grid-row:3}
+  .wrap>#strip{grid-column:2;grid-row:4}
+  .wrap>#view{grid-column:2;grid-row:5;min-width:0}
+  .wrap>.tabs{grid-column:1;grid-row:2 / 6;position:sticky;top:24px;align-self:start;flex-direction:column;gap:2px;border-bottom:0;margin:0;overflow:visible}
+  .tabs a{border-bottom:0;margin:0;padding:11px 14px;border-radius:10px;font-size:15px;border-left:3px solid transparent}
+  .tabs a:hover{background:var(--accent-soft)}
+  .tabs a[aria-current="page"]{background:var(--accent-soft);color:var(--ink);border-left-color:var(--accent)}
+  .tabs a .count{margin-left:auto}
+  .brand{flex-direction:column;align-items:flex-start;gap:2px}
+  .demo-tag{max-width:210px}
+  .afilters{top:0}
+}
+
+/* Interactive charts, chart views, add/remove inside the category popup */
+.centry{grid-template-columns:54px minmax(0,1fr) auto auto;align-items:center}
+.centry .cx{padding:2px 8px;font-size:12px}
+.cadd{margin:10px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.cadd b{display:block;margin-bottom:6px;font-size:13.5px}
+.cadd .addgrid{grid-template-columns:repeat(auto-fit,minmax(120px,1fr))}
+.vtabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 6px}
+.vtabs button{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:5px 12px;font-size:13px;cursor:pointer}
+.vtabs button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.crow{background:none;border:0;width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;border-radius:8px;padding:5px 4px}
+button.crow:hover,button.crow.sel{background:var(--accent-soft)}
+.crow .ctrack i.sel{background:var(--accent)}
+.wdet{margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:13.5px;min-height:44px}
+.lcdet{margin-top:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:13.5px}
+.wd-h{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:2px}
+.wdet .place,.lcdet .place{padding:3px 0}
+.wpie{display:block;margin:6px auto;width:100%;max-width:260px;height:auto}
+.wpie [data-act],.wdays [data-act]{cursor:pointer}
+.wpie text{fill:var(--ink);font-family:var(--font-body);text-anchor:middle}
+.wdays text{font-family:var(--font-body);font-size:9px;fill:var(--muted)}
+.wleg{display:flex;flex-wrap:wrap;gap:4px 10px;margin-top:4px}
+.wleg button{display:inline-flex;align-items:center;gap:5px;background:none;border:0;color:var(--ink);font-size:12.5px;padding:3px 4px;border-radius:6px;cursor:pointer}
+.wleg button.sel,.wleg button:hover{background:var(--accent-soft)}
+.wleg i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.pvplan{position:relative;height:10px;background:var(--line);border-radius:5px}
+.pvplan i{position:absolute;left:0;top:0;bottom:0;border-radius:5px}
+.pvplan u{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);text-decoration:none}
+.vrow{display:block;width:100%;text-align:left;background:none;border:0;color:inherit;font:inherit;padding:6px 4px;border-radius:8px;cursor:pointer}
+.vrow:hover,.vrow.sel{background:var(--accent-soft)}
+.vrow .vh{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:13.5px}
+[data-nwpt]{cursor:pointer}
 </style>
 
 <div class="wrap">
@@ -723,8 +785,8 @@ const monthShort=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{mont
 const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
 let renaming=null,expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
-let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null;
-let view='activity',openId=null,draft=null,curMonth=null,imp=null,qText='',delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
+let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null,lcPin=null,wsel=null;
+let view='activity',openId=null,draft=null,curMonth=null,imp=null,qText='',actAll=false,panelExtra=null,delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const find=id=>S.txs.find(t=>t.id===id);
@@ -1209,7 +1271,9 @@ function renderTabs(){
 function render(){
   ensureMonth();renderNotice();renderMonthbar();renderTally();renderStrip();renderTabs();
   const fn={tabs:viewTabs,overview:viewOverview,accounts:viewAccounts,review:viewReview,budgets:viewBudgets,activity:viewActivity,import:viewImport,rules:viewRules,data:viewData,more:viewMore}[view]||viewReview;
+  panelExtra=null;
   $('#view').innerHTML=fn();
+  renderPanel();
 }
 
 function editorHTML(t){
@@ -1249,7 +1313,7 @@ function reviewReason(t){
   return `${fd(t.date)} · ${esc(r.pattern)} sells mixed categories and this is over your ${fmt(S.cfg.threshold)} limit.`;
 }
 function cardHTML(t){
-  const open=openId===t.id,r=matchRule(t.desc,S.rules),def=(r&&r.cat&&S.cats.includes(r.cat))?r.cat:neutralCat();
+  const open=false,r=matchRule(t.desc,S.rules),def=(r&&r.cat&&S.cats.includes(r.cat))?r.cat:neutralCat();
   const remember=(!r&&t.cents>0&&!isP2P(t.desc))?`<div class="remember"><label class="field"><input type="checkbox" id="rem-${t.id}" checked> Remember: always file charges containing</label><input type="text" id="pat-${t.id}" value="${esc(merchantKey(t.desc))}" aria-label="Text to remember"><span>under the category chosen above</span></div>`:'';
   return `<article class="card"><div class="card-top"><div><h3 title="${esc(t.desc)}">${esc(niceName(t.desc))}</h3><p class="meta">${reviewReason(t)}</p><p class="raw" title="${esc(t.desc)}">${esc(t.desc)}</p></div><div class="amt${t.cents<0?' neg':''}">${fmt(t.cents)}</div></div>
    ${open?editorHTML(t):`<div class="actions"><label>Put it all in <select id="q-${t.id}">${catOpts(def)}</select></label><button class="btn" type="button" data-act="assign" data-id="${t.id}">Assign all</button>${(r&&r.gas&&t.cents>0&&S.cats.includes('Fuel')&&def!=='Fuel')?`<button class="btn" type="button" data-act="assigncat" data-id="${t.id}" data-cat="Gas">It was gas</button>`:''}<button class="btn small ghost" type="button" data-act="dismiss" data-id="${t.id}" title="Take this out of Itemwise. It stays out if you import the same file again.">Remove</button><span class="sp"></span>${t.cents>0?`<button class="btn primary" type="button" data-act="open" data-id="${t.id}">Split with a receipt</button>`:''}</div>${remember}`}</article>`;
@@ -1299,34 +1363,112 @@ function monthChart(budget){
   const yb=Y(budget),ys=Y(total);
   const spentLblY=Math.abs(ys-yb)<15?(ys<yb?ys-6:ys+14):ys+4;
   const pace=isCur&&budget>0?`<line x1="${X(1)}" y1="${Y(0)}" x2="${X(dim)}" y2="${Y(budget)}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="2 4"/>`:'';
-  lcData={dim,last,cum,budget,isCur,W,pl,iw,month:curMonth,over};
+  lcData={dim,last,cum,budget,isCur,W,pl,iw,month:curMonth,over,py:cum.map(v=>Y(v)),items:daySpend().items};
+  const pinD=lcPin&&lcPin.m===curMonth&&lcPin.d>=1&&lcPin.d<=last?lcPin.d:null,pinX=pinD?X(pinD):0;
   const svg=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Cumulative spending in ${monthLabel(curMonth)}: ${fmt(total)} so far against a ${fmt(budget)} budget, ${over?'over':'within'} budget.">${g}
     <line x1="${pl}" x2="${pl+iw}" y1="${yb}" y2="${yb}" stroke="var(--muted)" stroke-width="1.5" stroke-dasharray="6 4"/>${pace}
     <polyline points="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
     <circle cx="${X(last)}" cy="${ys}" r="4.5" fill="${col}" stroke="var(--surface)" stroke-width="2"/>
     <text x="${pl+iw+8}" y="${spentLblY}" class="ink">${over?'▲':'✓'} Spent ${compactMoney(total)}</text>
     <text x="${pl+iw+8}" y="${yb+(Math.abs(ys-yb)<15&&ys<yb?14:4)}">Budget ${compactMoney(budget)}</text>
-    <line id="lcx" x1="0" x2="0" y1="${pt}" y2="${pt+ih}" stroke="var(--ink)" stroke-width="1" opacity="0"/>
+    <line id="lcx" x1="${pinX}" x2="${pinX}" y1="${pt}" y2="${pt+ih}" stroke="var(--ink)" stroke-width="1" opacity="${pinD?.35:0}"/>
+    <circle id="lcdot" cx="${pinX}" cy="${pinD?Y(cum[pinD]):0}" r="5" fill="${col}" stroke="var(--surface)" stroke-width="2" opacity="${pinD?1:0}"/>
   </svg>`;
   const legend=`<div class="legend" style="margin-top:6px"><span><i style="background:${col}"></i>Spent so far</span><span><i style="background:var(--muted);height:2px;vertical-align:3px"></i>Total budget</span>${isCur&&budget>0?'<span><i style="background:var(--muted);height:2px;vertical-align:3px;opacity:.6"></i>Even pace</span>':''}</div>`;
   let tbl='<table class="tbl"><thead><tr><th>Day</th><th class="r">That day</th><th class="r">Running total</th></tr></thead><tbody>';
   for(let d=1;d<=last;d++)if(byDay[d])tbl+=`<tr><td>${monthShort(curMonth)} ${d}</td><td class="r mono">${fmt(byDay[d])}</td><td class="r mono">${fmt(cum[d])}</td></tr>`;
   tbl+='</tbody></table>';
-  return `<div class="lcwrap">${showTbl?`<div class="scroll">${tbl}</div>`:svg+'<div class="lctip" id="lctip"></div>'}</div>${showTbl?'':legend}
+  return `<div class="lcwrap">${showTbl?`<div class="scroll">${tbl}</div>`:svg+'<div class="lctip" id="lctip"></div>'}</div>${showTbl?'':legend+'<div class="lcdet" id="lcdet" aria-live="polite">'+lcDetail(lcData,pinD)+'</div>'}
    <div class="actions" style="margin-top:8px"><button class="btn small ghost" type="button" data-act="tbl">${showTbl?'Show chart':'View as table'}</button></div>`;
+}
+const WPAL=['#3b6fd4','#2f9e7a','#d9822b','#8a5cc2','#c9485b','#4aa3b8','#a3a33a','#7a8794'];
+function daySpend(m){
+  m=m||curMonth;const dim=daysIn(m),by=new Array(dim+1).fill(0),items=[];for(let d=0;d<=dim;d++)items.push([]);
+  S.txs.forEach(t=>{if(!t.date.startsWith(m)||t.status==='transfer'||t.status==='credit')return;const v=t.cents-savedPart(t),d=+t.date.slice(8,10);by[d]+=v;if(v>0)items[d].push({name:niceName(t.desc),cents:v,id:t.id})});
+  items.forEach(l=>l.sort((x,y)=>y.cents-x.cents));
+  const cum=[0];for(let d=1;d<=dim;d++)cum[d]=cum[d-1]+by[d];
+  return {dim,by,items,cum};
+}
+function catCharges(c){
+  const out=[];S.txs.forEach(t=>{if(!t.date.startsWith(curMonth)||t.status==='transfer'||t.status==='credit'||t.status==='review')return;(t.allocations||[]).forEach(a=>{if(a.cat===c)out.push({t,cents:a.cents})})});
+  return out.sort((x,y)=>y.cents-x.cents);
+}
+function wmSlices(items){
+  const top=items.slice(0,7),rest=items.slice(7);
+  const out=top.map((x,i)=>({k:x.c,c:x.c,v:x.v,col:WPAL[i]}));
+  if(rest.length)out.push({k:'Other',c:'Other',v:sum(rest.map(x=>x.v)),col:WPAL[7],members:rest});
+  return out;
+}
+function wmList(items,tot,mx,st){
+  let h=`<div style="margin-top:6px">`+items.map(x=>`<button type="button" class="crow${wsel===x.c?' sel':''}" data-act="wsel" data-k="${esc(x.c)}" aria-pressed="${wsel===x.c}" title="${esc(x.c)}: ${fmt(x.v)}, ${Math.round(x.v/tot*100)}% of categorized spending"><span class="cn">${esc(x.c)}</span><div class="ctrack" aria-hidden="true"><i${wsel===x.c?' class="sel"':''} style="width:${x.v/mx*100}%"></i></div><span class="mono cv">${fmt(x.v)}</span><span class="cp">${Math.round(x.v/tot*100)}%</span></button>`).join('');
+  if(st.unalloc>0)h+=`<div class="crow" title="Needs review: ${fmt(st.unalloc)}"><span class="cn">Needs review</span><div class="ctrack" aria-hidden="true"><i class="hatch" style="width:${Math.min(st.unalloc/mx,1)*100}%"></i></div><span class="mono cv">${fmt(st.unalloc)}</span><span class="cp"></span></div>`;
+  return h+`</div>`;
+}
+function wmPie(items,tot,st){
+  const sl=wmSlices(items),R=68,cx=100,cy=100,P=(a,r)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
+  let a0=-Math.PI/2,paths='';
+  sl.forEach(x=>{
+    const ang=x.v/tot*Math.PI*2,sel=wsel===x.k,sw=sel?36:28,op=wsel&&!sel?.4:1,at=`data-act="wsel" data-k="${esc(x.k)}" role="button" tabindex="0" aria-label="${esc(x.c)} ${fmt(x.v)}, ${Math.round(x.v/tot*100)}%" aria-pressed="${sel}"`;
+    if(ang>=Math.PI*2-.001)paths+=`<circle cx="${cx}" cy="${cy}" r="${R}" fill="none" stroke="${x.col}" stroke-width="${sw}" opacity="${op}" ${at}/>`;
+    else{const a1=a0+ang,[x0,y0]=P(a0,R),[x1,y1]=P(a1,R);paths+=`<path d="M${x0.toFixed(2)} ${y0.toFixed(2)} A${R} ${R} 0 ${ang>Math.PI?1:0} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}" fill="none" stroke="${x.col}" stroke-width="${sw}" opacity="${op}" ${at}/>`}
+    a0+=ang;
+  });
+  const cur=sl.find(x=>x.k===wsel);
+  const mid=cur?`<text x="100" y="94" font-size="11">${esc(cur.c.length>14?cur.c.slice(0,13)+'…':cur.c)}</text><text x="100" y="112" font-size="15" font-weight="700">${compactMoney(cur.v)}</text><text x="100" y="126" font-size="10" style="fill:var(--muted)">${Math.round(cur.v/tot*100)}%</text>`:`<text x="100" y="98" font-size="11" style="fill:var(--muted)">Spent</text><text x="100" y="117" font-size="16" font-weight="700">${compactMoney(tot)}</text>`;
+  return `<svg class="wpie" viewBox="0 0 200 200" role="group" aria-label="Spending by category, as a ring. Select a slice for details.">${paths}${mid}</svg><div class="wleg">${sl.map(x=>`<button type="button" data-act="wsel" data-k="${esc(x.k)}" class="${wsel===x.k?'sel':''}"><i style="background:${x.col}"></i>${esc(x.c)} ${Math.round(x.v/tot*100)}%</button>`).join('')}</div>`+(st.unalloc>0?`<p class="meta" style="margin:6px 0 0">Not shown: ${fmt(st.unalloc)} still needs review.</p>`:'');
+}
+function wmPlan(st){
+  const B=planFor(curMonth).budgets||{};
+  const rows=S.cats.filter(c=>!isSav(groupOf(c))).map(c=>({c,v:st.spent[c]||0,lim:B[c]||0})).filter(x=>x.v>0||x.lim>0).sort((x,y)=>y.v-x.v);
+  if(!rows.length)return `<div class="empty">Nothing planned or spent yet.</div>`;
+  const mx=Math.max(...rows.map(x=>Math.max(x.v,x.lim)),1);
+  return `<div style="margin-top:6px">`+rows.map(x=>{const over=x.lim>0&&x.v>x.lim+OVER_SLACK,col=x.lim?(over?'var(--bad)':'var(--ok)'):'var(--neutral)';
+    return `<button type="button" class="vrow${wsel===x.c?' sel':''}" data-act="wsel" data-k="${esc(x.c)}" aria-pressed="${wsel===x.c}"><div class="vh"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}${x.lim?` <span class="meta">of ${fmt(x.lim)}</span>`:''}</span></div><div class="pvplan" role="img" aria-label="${esc(x.c)}: ${fmt(x.v)}${x.lim?' of '+fmt(x.lim)+(over?', over':', within plan'):', no plan set'}"><i style="width:${x.v/mx*100}%;background:${col}"></i>${x.lim?`<u style="left:calc(${x.lim/mx*100}% - 1px)"></u>`:''}</div></button>`}).join('')+`</div><div class="legend" style="margin-top:6px"><span><i style="background:var(--ok)"></i>Within plan</span><span><i style="background:var(--bad)"></i>Over plan</span><span><i style="background:var(--ink);width:2px"></i>Planned amount</span></div>`;
+}
+function wmDays(){
+  const D=daySpend(),W=340,H=150,pl=34,pb=18,pt=8,iw=W-pl-6,ih=H-pt-pb,mx=Math.max(...D.by.slice(1),1),bw=iw/D.dim;
+  let g=`<text x="${pl-4}" y="${pt+8}" text-anchor="end">${compactMoney(mx)}</text><text x="${pl-4}" y="${pt+ih}" text-anchor="end">$0</text><line x1="${pl}" x2="${W-6}" y1="${pt+ih}" y2="${pt+ih}" stroke="var(--line)"/>`;
+  for(let d=1;d<=D.dim;d++){
+    const v=Math.max(D.by[d],0),h=v/mx*ih,x=pl+(d-1)*bw,sel=wsel==='d'+d;
+    g+=`<g data-act="wsel" data-k="d${d}" role="button" tabindex="0" aria-label="${monthShort(curMonth)} ${d}: ${fmt(D.by[d])}" aria-pressed="${sel}"><rect x="${x.toFixed(1)}" y="${pt}" width="${bw.toFixed(1)}" height="${ih}" fill="transparent"/>${h>0?`<rect x="${(x+bw*.15).toFixed(1)}" y="${(pt+ih-h).toFixed(1)}" width="${(bw*.7).toFixed(1)}" height="${h.toFixed(1)}" rx="1.5" fill="${sel?'var(--accent)':'var(--neutral)'}"/>`:''}</g>`;
+  }
+  [1,8,15,22,D.dim].forEach(d=>{g+=`<text x="${(pl+(d-.5)*bw).toFixed(1)}" y="${H-4}" text-anchor="middle">${d}</text>`});
+  return `<svg class="wdays" viewBox="0 0 ${W} ${H}" width="100%" role="group" aria-label="Spending for each day of ${monthLabel(curMonth)}. Select a day for details.">${g}</svg><p class="meta" style="margin:2px 0 0">Each bar is one day. Select a day to see what was spent.</p>`;
+}
+function wmDetail(v,items,tot,st){
+  const hint={list:'Select a category to see its share, its plan and its biggest charges.',pie:'Select a slice to see what is inside it.',plan:'Select a category to compare it with its plan and see its biggest charges.',days:'Select a day to see that day’s charges and the running total up to it.'}[v];
+  if(!wsel)return `<span class="meta">${hint}</span>`;
+  const chg=(l)=>l.slice(0,6).map(x=>`<div class="place"><span>${x.t?fd(x.t.date)+' · ':''}${esc(x.name||niceName(x.t.desc))}</span><span class="mono">${fmt(x.cents)}</span></div>`).join('');
+  if(/^d\d+$/.test(wsel)){
+    const d=+wsel.slice(1),D=daySpend();if(d>D.dim)return `<span class="meta">${hint}</span>`;
+    const day=D.items[d],B=plannedSpend(curMonth);
+    return `<div class="wd-h"><b>${monthLabel(curMonth).replace(/ \d+$/,'')} ${d}</b><span class="mono">${fmt(D.by[d])} that day</span></div><div class="meta">${fmt(D.cum[d])} spent through this day${B>0?` · ${D.cum[d]>B?fmt(D.cum[d]-B)+' over the plan':fmt(B-D.cum[d])+' of the plan left'}`:''}</div>`+(day.length?chg(day)+(day.length>6?`<div class="meta">and ${day.length-6} more</div>`:''):`<div class="meta" style="margin-top:4px">No charges on this day.</div>`);
+  }
+  if(wsel==='Other'){const m=items.slice(7);if(!m.length)return `<span class="meta">${hint}</span>`;return `<div class="wd-h"><b>Smaller categories</b><span class="mono">${fmt(sum(m.map(x=>x.v)))}</span></div><div class="meta">${Math.round(sum(m.map(x=>x.v))/tot*100)}% of categorized spending</div>`+m.map(x=>`<div class="place"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}</span></div>`).join('')}
+  const it=items.find(x=>x.c===wsel);if(!it)return `<span class="meta">${hint}</span>`;
+  const lim=(planFor(curMonth).budgets||{})[it.c]||0,l=catCharges(it.c);
+  return `<div class="wd-h"><b>${esc(it.c)}</b><span class="mono">${fmt(it.v)}</span></div><div class="meta">${Math.round(it.v/tot*100)}% of categorized spending · ${l.length} charge${l.length===1?'':'s'}${lim?` · plan ${fmt(lim)} · ${it.v>lim?fmt(it.v-lim)+' over':fmt(lim-it.v)+' left'}`:''}</div>`+chg(l)+`<div class="actions" style="margin-top:6px"><button class="btn small" type="button" data-act="togcat" data-name="${esc(it.c)}">Open ${esc(it.c)}</button></div>`;
 }
 function composeHTML(st){
   const items=S.cats.filter(c=>!isSav(groupOf(c))).map(c=>({c,v:st.spent[c]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
   const tot=sum(items.map(x=>x.v)),mx=Math.max(...items.map(x=>x.v),1);
   let h=`<h3>Where the money went</h3>`;
   if(!items.length&&!st.unalloc)return h+`<div class="empty" style="margin-top:10px">No spending in ${monthLabel(curMonth)} yet.</div>`;
-  h+=`<div style="margin-top:8px">`+items.map(x=>`<div class="crow" title="${esc(x.c)}: ${fmt(x.v)}, ${Math.round(x.v/tot*100)}% of categorized spending"><span class="cn">${esc(x.c)}</span><div class="ctrack" aria-hidden="true"><i style="width:${x.v/mx*100}%"></i></div><span class="mono cv">${fmt(x.v)}</span><span class="cp">${Math.round(x.v/tot*100)}%</span></div>`).join('');
-  if(st.unalloc>0)h+=`<div class="crow" title="Needs review: ${fmt(st.unalloc)}"><span class="cn">Needs review</span><div class="ctrack" aria-hidden="true"><i class="hatch" style="width:${Math.min(st.unalloc/mx,1)*100}%"></i></div><span class="mono cv">${fmt(st.unalloc)}</span><span class="cp"></span></div>`;
-  h+=`</div>`;
+  const v=['list','pie','plan','days'].includes(S.wview)?S.wview:'list';
+  if(wsel&&v!=='days'&&/^d\d+$/.test(wsel))wsel=null;
+  h+=`<div class="vtabs" role="group" aria-label="Choose a view">${[['list','List'],['pie','Pie'],['plan','Vs plan'],['days','By day']].map(([k,n])=>`<button type="button" data-act="wview" data-v="${k}" aria-pressed="${v===k}">${n}</button>`).join('')}</div>`;
+  h+=v==='pie'&&items.length?wmPie(items,tot,st):v==='plan'?wmPlan(st):v==='days'?wmDays():wmList(items,tot,mx,st);
+  h+=`<div class="wdet" aria-live="polite">${wmDetail(v==='pie'&&!items.length?'list':v,items,tot,st)}</div>`;
   const pl={};S.txs.filter(t=>t.date.startsWith(curMonth)&&t.cents>0&&t.status!=='transfer'&&t.status!=='credit'&&t.cents-savedPart(t)>0).forEach(t=>{const n=niceName(t.desc);(pl[n]=pl[n]||{n,c:0,v:0});pl[n].c++;pl[n].v+=t.cents-savedPart(t)});
   const top=Object.values(pl).sort((a,b)=>b.v-a.v).slice(0,5);
   if(top.length)h+=`<div class="sub">Top places</div>`+top.map(x=>`<div class="place"><span>${esc(x.n)} <span class="meta">${x.c} charge${x.c===1?'':'s'}</span></span><span class="mono">${fmt(x.v)}</span></div>`).join('');
   return h;
+}
+function refreshWmw(){const el=document.getElementById('wmw');if(el)el.innerHTML=composeHTML(stats())}
+function lcDetail(L,d){
+  if(!d)return `<span class="meta">Tap or click the line to pin a day and see what was spent up to it.</span>`;
+  const day=L.items[d]||[],dayT=sum(day.map(x=>x.cents)),left=L.budget-L.cum[d];
+  return `<div class="wd-h"><b>${monthShort(L.month)} ${d}</b><span class="mono">${fmt(L.cum[d])} spent so far</span></div><div class="meta">${fmt(dayT)} that day${L.budget>0?' · '+(left>=0?fmt(left)+' of the plan left':fmt(-left)+' over the plan'):''}</div>`+(day.length?day.slice(0,6).map(x=>`<div class="place"><span>${esc(x.name)}</span><span class="mono">${fmt(x.cents)}</span></div>`).join('')+(day.length>6?`<div class="meta">and ${day.length-6} more</div>`:''):`<div class="meta" style="margin-top:4px">No charges on this day.</div>`);
 }
 function trendsHTML(){
   const ms=months(),i=ms.indexOf(curMonth);
@@ -1393,12 +1535,13 @@ function viewBudgets(){
      <span class="${isOver?'left-over':''}">${isOver?fmt(spent-cap)+' over':(sav?(left>0?fmt(left)+' left to save':(spent>cap+OVER_SLACK?fmt(spent-cap)+' extra saved':'✓ Done for this month')):fmt(left)+' left')}${perDay}</span>${proj?'<span class="left-over">▲ On pace to run over</span>':''}${pend?`<span>${fmt(pend)} more waiting for review</span>`:''}${dl}</div></div>`;
   };
   const nameBtn=c=>`<button class="catbtn" type="button" data-act="togcat" data-name="${esc(c)}" aria-expanded="${openCats.has(c)}" title="Show what is in ${esc(c)}"><span class="chev">${openCats.has(c)?'▾':'▸'}</span>${esc(c)}</button>`;
-  const catList=c=>{
-    if(!openCats.has(c))return '';
+  const catListBody=c=>{
     const tr=(S.track||{})[c]||{};
     const gf=(goalEdit===c&&!tr.goal)?goalFormHTML(c,tr)
       :`<div class="actions">${tr.goal?`<span class="meta">Goal: ${fmt(tr.goal.target)} by ${monthLabel(tr.goal.by)}</span><button class="btn small" type="button" data-act="goaledit" data-name="${esc(c)}">Edit goal</button><button class="btn small ghost" type="button" data-act="goalrm" data-name="${esc(c)}">Remove goal</button>`:`<button class="btn small" type="button" data-act="goaledit" data-name="${esc(c)}">Set a savings goal</button>`}</div>`;
     const cset=`<div class="cset"><label class="field"><input type="checkbox" data-roll="${esc(c)}"${tr.roll?' checked':''}> Save up what I don't spend (it carries into next month)</label>${tr.roll?rollBaseHTML(c,tr):''}${gf}</div>`;
+    const dflt=todayISO.startsWith(curMonth)?todayISO:curMonth+'-01';
+    const addBox=`<div class="cadd"><b>Add a charge to ${esc(c)}</b><div class="addgrid"><label>Date<input type="date" id="ca-date" value="${dflt}" min="${curMonth}-01" max="${curMonth}-${String(daysIn(curMonth)).padStart(2,'0')}"></label><label>Where<input type="text" id="ca-desc" placeholder="Chick-fil-A" autocomplete="off"></label><label>Amount<input type="text" id="ca-amt" inputmode="decimal" placeholder="0.00"></label></div><div class="actions" style="margin-top:6px"><button class="btn small primary" type="button" data-act="catadd" data-name="${esc(c)}">Add charge</button></div></div>`;
     const es=[];
     S.txs.forEach(t=>{
       if(!t.date.startsWith(curMonth)||t.status==='transfer'||t.status==='credit')return;
@@ -1406,9 +1549,11 @@ function viewBudgets(){
       (t.allocations||[]).forEach(a=>{if(a.cat===c)es.push({t,cents:a.cents,part:(t.allocations.length>1)})});
     });
     es.sort((x,y)=>y.t.date.localeCompare(x.t.date)||y.t.id-x.t.id);
-    if(!es.length)return `<div class="catlist">${cset}<p class="meta" style="margin:2px 0">Nothing in ${esc(c)} for ${monthLabel(curMonth)} yet.</p></div>`;
-    return `<div class="catlist">${cset}${es.map(e=>`<div class="centry" role="listitem"><span class="cd">${fd(e.t.date)}</span><span class="cn">${esc(niceName(e.t.desc))}${e.part?`<em> · part of ${fmt(e.t.cents)}</em>`:''}${e.pending?'<em> · waiting for review</em>':''}${e.t.entered?'<em> · added by hand</em>':''}</span><span class="mono ca">${fmt(e.cents)}</span></div>`).join('')}</div>`;
+    if(!es.length)return `<div class="catlist">${cset}${addBox}<p class="meta" style="margin:2px 0">Nothing in ${esc(c)} for ${monthLabel(curMonth)} yet.</p></div>`;
+    return `<div class="catlist">${cset}${addBox}${es.map(e=>`<div class="centry" role="listitem"><span class="cd">${fd(e.t.date)}</span><span class="cn">${esc(niceName(e.t.desc))}${e.part?`<em> · part of ${fmt(e.t.cents)}</em>`:''}${e.pending?'<em> · waiting for review</em>':''}${e.t.entered?'<em> · added by hand</em>':''}</span><span class="mono ca">${fmt(e.cents)}</span><button class="btn small ghost cx" type="button" data-act="catrm" data-id="${e.t.id}" title="${e.part?'Removes the whole charge, not just this part':'Remove this charge'}" aria-label="Remove ${esc(niceName(e.t.desc))} ${fmt(e.cents)}">Remove</button></div>`).join('')}</div>`;
   };
+  const catList=()=>'';
+  if(openCats.size){const c0=[...openCats][0];if(S.cats.includes(c0))panelExtra={key:'cat'+c0,title:c0,html:catListBody(c0)+`<div class="actions"><button class="btn primary" type="button" data-act="panelclose">Done</button></div>`}}
   const crow=r=>{
     const {c,lim}=r;
     const ctl=editB===c?`$<input type="number" min="0" step="10" id="bedit" data-budget="${esc(c)}" value="${lim/100}" aria-label="${esc(c)} planned amount in dollars">`:`<button class="lim" type="button" data-act="editbudget" data-name="${esc(c)}" aria-label="Edit ${esc(c)} planned amount, now ${fmt(lim)}">${fmt(lim)}</button>`;
@@ -1425,7 +1570,9 @@ function viewBudgets(){
     if(editInc===k)return `<div class="incrow"><span>${esc(i.name)}</span><span>$<input type="number" min="0" step="10" id="iedit" data-inc="${k}" value="${i.cents/100}" aria-label="${esc(i.name)} income in dollars"></span></div>`;
     const got=recOf(i),st=got===0?['Not yet','']:(got>=i.cents?['Received','ok']:['Partial','warn']);
     const recs=(i.rec||[]).map(r=>`<div class="meta" style="display:flex;justify-content:space-between;align-items:center;padding:2px 0 2px 12px"><span>${fd(r.date)}${r.tx?' · from import':''}</span><span>${fmt(r.cents)} <button class="btn small ghost" type="button" data-act="rmrec" data-i="${k}" data-r="${r.id}" aria-label="Remove ${fmt(r.cents)} received on ${fd(r.date)}">×</button></span></div>`).join('');
-    const form=logInc===k?`<div class="incrow" style="flex-wrap:wrap"><span>Received $<input type="number" min="0" step="0.01" id="recamt" value="${Math.max(0,i.cents-got)/100}" style="width:100px" aria-label="Amount received in dollars"></span><input type="date" id="recdate" value="${recDate}" aria-label="Date received"><span><button class="btn small primary" type="button" data-act="saveinc" data-i="${k}">Save</button> <button class="btn small ghost" type="button" data-act="cancelinc">Cancel</button></span></div>`:'';
+    const formHTML=`<div class="incrow" style="flex-wrap:wrap"><span>Received $<input type="number" min="0" step="0.01" id="recamt" value="${Math.max(0,i.cents-got)/100}" style="width:100px" aria-label="Amount received in dollars"></span><input type="date" id="recdate" value="${recDate}" aria-label="Date received"><span><button class="btn small primary" type="button" data-act="saveinc" data-i="${k}">Save</button> <button class="btn small ghost" type="button" data-act="cancelinc">Cancel</button></span></div>`;
+    if(logInc===k)panelExtra={key:'inc'+k,title:'Log '+i.name+' received',html:formHTML};
+    const form='';
     return `<div class="incrow"><span>${esc(i.name)} <span class="pill ${st[1]}">${st[0]}</span></span><span><span class="meta">${fmt(got)} of</span> <button class="lim" type="button" data-act="editinc" data-i="${k}" aria-label="Edit ${esc(i.name)}, now ${fmt(i.cents)}">${fmt(i.cents)}</button></span></div><div class="incrow" style="border-top:0;padding-top:0"><span><button class="btn small" type="button" data-act="loginc" data-i="${k}">Log received</button></span><button class="btn small ghost" type="button" data-act="rminc" data-i="${k}" aria-label="Remove ${esc(i.name)}">Remove line</button></div>${recs}${form}`;
   };
   const incAdd=`<div class="incrow" style="flex-wrap:wrap"><input type="text" id="newincname" maxlength="40" placeholder="Name, like Side job" aria-label="New income line name" style="min-width:150px;flex:1"><span>$<input type="number" min="0" step="10" id="newincamt" placeholder="0" aria-label="New income amount in dollars" style="width:110px"></span><button class="btn small primary" type="button" data-act="addinc">Add income</button></div>`;
@@ -1484,7 +1631,7 @@ function viewBudgets(){
    <div class="stackbar${over?' over':''}" role="img" aria-label="${fmt(st.inBudgets)} in budgets, ${fmt(st.unalloc)} needs review, of ${fmt(budgeted)} planned"><div class="a" style="width:${Math.max(st.inBudgets,0)/denom*100}%"></div><div class="p" style="width:${Math.max(st.unalloc,0)/denom*100}%"></div></div>
    <div class="legend"><span>${sw(over?'var(--bad)':'var(--ok)')}${over?'▲ Over plan':'✓ Within plan'} ${fmt(st.inBudgets)}</span><span>${sw('repeating-linear-gradient(135deg,var(--neutral) 0 3px,transparent 3px 6px)')}Needs review ${fmt(st.unalloc)}</span><span>Planned ${fmt(budgeted)}</span></div></section>${hold}
    <div class="cols"><section class="card"><h3>Month so far</h3><p class="meta" style="margin:2px 0 8px">Your running total against your whole plan. Hover or drag across it for any day.</p>${monthChart(budgeted)}</section>
-   <section class="card">${composeHTML(st)}</section></div>
+   <section class="card" id="wmw">${composeHTML(st)}</section></div>
    <div class="legend" style="margin:0 0 10px"><span>${sw('var(--ok)')}Within plan</span><span>${sw('var(--bad)')}Over</span><span>${sw('repeating-linear-gradient(135deg,var(--neutral) 0 3px,transparent 3px 6px)')}Waiting for review</span>${isCur?`<span>${sw('var(--ink)','width:2px;height:12px;opacity:.55;border-radius:1px')}Even pace for today</span>`:''}</div>`:hold;
   const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done editing':'Edit boxes and categories'}</button>${stats(curMonth).n?`<button class="btn small" type="button" data-act="wrapopen" data-m="${curMonth}">✨ ${monthShort(curMonth)} Tally</button>`:''}${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
   return `${setupCard}${planCard}${goalsCard()}${spendBlock}${arrBar}${STARTER&&!arrange?`<div class="actions" style="margin:0 0 8px"><button class="btn small ghost" type="button" data-act="gall" data-v="1">Open all</button><button class="btn small ghost" type="button" data-act="gall" data-v="0">Close all</button></div>`:''}${groupCards}
@@ -1511,12 +1658,16 @@ function pillOf(t){
   return ['Auto',''];
 }
 function actList(){
-  const q=qText.trim().toUpperCase();
-  let list=S.txs.filter(t=>t.date.startsWith(curMonth)&&(!q||t.desc.toUpperCase().includes(q)||niceName(t.desc).toUpperCase().includes(q))).sort(byDate);
+  const q=qText.trim().toUpperCase(),qn=q.replace(/[$,]/g,'');
+  let list=S.txs.filter(t=>(actAll||t.date.startsWith(curMonth))&&(!q||t.desc.toUpperCase().includes(q)||niceName(t.desc).toUpperCase().includes(q)||(/^\d*\.?\d+$/.test(qn)&&(Math.abs(t.cents)/100).toFixed(2).includes(qn)))).sort(byDate);
   if(actFilter==='review')list=list.filter(t=>t.status==='review'||t.status==='guess');
+  else if(actFilter==='week'){const ref=curMonth===todayKey?todayISO:curMonth+'-'+String(daysIn(curMonth)).padStart(2,'0'),dd=new Date(ref+'T12:00:00Z');dd.setUTCDate(dd.getUTCDate()-6);const cut=dd.toISOString().slice(0,10);list=list.filter(t=>t.date>=cut&&t.date<=ref)}
+  else if(actFilter==='in')list=list.filter(t=>t.cents<0);
+  else if(actFilter==='split')list=list.filter(t=>t.split||(t.allocations||[]).length>1);
   else if(actFilter!=='all')list=list.filter(t=>(t.allocations||[]).some(a=>a.cat===actFilter));
   if(!list.length)return `<div class="empty">${S.txs.length?'No charges match.':'Nothing imported yet.'}</div>`;
-  return list.map(t=>{
+  const outT=sum(list.filter(t=>t.cents>0&&t.status!=='transfer').map(t=>t.cents));
+  return `<div class="asum"><b>${list.length} charge${list.length===1?'':'s'}</b> · ${fmt(outT)} spent${actAll?' · all months':''}</div>`+list.map(t=>{
     const [pl,pc]=pillOf(t);
     let cat;
     if(t.status==='transfer'&&t.cents>0)cat=`<span class="pill ${pc}">${pl}</span><select data-actcat="${t.id}" aria-label="Count ${esc(niceName(t.desc))} as savings"><option value="">Count as savings in…</option>${S.cats.filter(c=>isSav(groupOf(c))||((S.track||{})[c]&&S.track[c].goal)).map(c=>`<option>${esc(c)}</option>`).join('')}</select>`;
@@ -1531,7 +1682,7 @@ function actList(){
     if(t.status==='credit'){items.push(`<button class="btn small" type="button" data-act="refund" data-id="${t.id}">Count as a refund</button>`);if(t.cents<0)items.push(t.extra?`<button class="btn small" type="button" data-act="unextra" data-id="${t.id}">Not disposable income</button>`:`<button class="btn small" type="button" data-act="extrainc" data-id="${t.id}">Disposable income</button>`)}
     items.push(delId===t.id?`<button class="btn small danger on" type="button" data-act="del" data-id="${t.id}">Confirm remove</button>`:`<button class="btn small danger" type="button" data-act="del" data-id="${t.id}">Remove</button>`);
     const note=t.status==='transfer'?'Moved between your own accounts, so it is not counted as spending.':(t.status==='credit'?'Money in. Not counted as spending.':'');
-    return `<div class="arow"><span class="d">${fd(t.date)}</span><div class="who"><b title="${esc(t.desc)}">${esc(niceName(t.desc))}</b><div class="raw" title="${esc(t.desc)}">${esc(t.desc)}</div>${note&&t.status==='transfer'?`<div style="font-size:12.5px">${note}</div>`:''}<div class="catline">${cat}</div></div><span class="amt${t.cents<0?' neg':''}" style="font-size:15px">${fmt(t.cents)}</span><button class="btn small ghost more" type="button" data-act="menu" data-id="${t.id}" aria-expanded="${menuId===t.id}" aria-label="More actions for ${esc(niceName(t.desc))}">⋯</button></div>${menuId===t.id?`<div class="rowmenu">${items.join('')}</div>`:''}${openId===t.id?`<div class="edwrap">${editorHTML(t)}</div>`:''}`;
+    return `<div class="arow"><span class="d">${fd(t.date)}</span><div class="who"><button class="catbtn" type="button" data-act="store" data-name="${esc(niceName(t.desc))}" title="See every charge at ${esc(niceName(t.desc))}"><b>${esc(niceName(t.desc))}</b></button><div class="raw" title="${esc(t.desc)}">${esc(t.desc)}</div>${note&&t.status==='transfer'?`<div style="font-size:12.5px">${note}</div>`:''}<div class="catline">${cat}</div></div><span class="amt${t.cents<0?' neg':''}" style="font-size:15px">${fmt(t.cents)}</span><button class="btn small ghost more" type="button" data-act="menu" data-id="${t.id}" aria-expanded="${menuId===t.id}" aria-label="More actions for ${esc(niceName(t.desc))}">⋯</button></div>${menuId===t.id?`<div class="rowmenu">${items.join('')}</div>`:''}`;
   }).join('');
 }
 function addManual(){
@@ -1574,8 +1725,8 @@ function viewActivity(){
   const cats=S.cats.filter(c=>mm.some(t=>(t.allocations||[]).some(a=>a.cat===c)));
   const chip=(f,l)=>`<button class="fchip" type="button" data-act="afilter" data-f="${esc(f)}" aria-pressed="${actFilter===f}">${esc(l)}</button>`;
   const af=addFormHTML();
-  return (addOpen?af:'')+(rv?`<h3 class="sechead">To review</h3>${rv}<h3 class="sechead">All charges</h3>`:'')+(addOpen?'':af)+`<div class="fchips" role="group" aria-label="Filter charges">${chip('all','All')}${nReview?chip('review','Needs a look ('+nReview+')'):''}${cats.map(c=>chip(c,c)).join('')}</div>
-  <div class="actions" style="margin:0 0 12px"><input type="text" id="q" placeholder="Search this month" value="${esc(qText)}" aria-label="Search charges" style="min-width:220px"></div><section class="card" id="alist">${actList()}</section>`;
+  return (addOpen?af:'')+(rv?`<h3 class="sechead">To review</h3>${rv}<h3 class="sechead">All charges</h3>`:'')+(addOpen?'':af)+`<div class="afilters"><div class="searchrow"><input type="search" id="q" placeholder="Search a store or an amount" value="${esc(qText)}" aria-label="Search charges"><button class="btn small ghost" type="button" data-act="qclear">Reset</button></div><div class="fchips" role="group" aria-label="Filter charges">${chip('all','All')}${nReview?chip('review','Needs a look ('+nReview+')'):''}${chip('week','This week')}${chip('in','Money in')}${chip('split','Splits')}<button class="fchip" type="button" data-act="aall" aria-pressed="${actAll}">All months</button>${cats.map(c=>chip(c,c)).join('')}</div></div>
+  <section class="card" id="alist">${actList()}</section>`;
 }
 
 function mapSelect(key,label){
@@ -1847,7 +1998,7 @@ const WIDGETS={
     const W=320,H=120,P=10,t0=Date.parse(pts[0].d),t1=Date.parse(pts[pts.length-1].d)||t0+1,lo=Math.min(...pts.map(p=>p.v)),hi=Math.max(...pts.map(p=>p.v)),span=Math.max(hi-lo,1);
     const xy=p=>[P+(Date.parse(p.d)-t0)/Math.max(t1-t0,1)*(W-2*P),H-P-(p.v-lo)/span*(H-2*P)];
     const line=pts.map(p=>xy(p).map(n=>n.toFixed(1)).join(',')).join(' ');
-    return wcard('Net worth over time',`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Net worth from ${fmt(pts[0].v)} on ${fd(pts[0].d)} to ${fmt(pts[pts.length-1].v)} on ${fd(pts[pts.length-1].d)}"><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${pts.map(p=>{const[x,y]=xy(p);return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--accent)"/>`}).join('')}</svg><div class="meta" style="display:flex;justify-content:space-between"><span>${fd(pts[0].d)} · ${fmt(pts[0].v)}</span><span>${fd(pts[pts.length-1].d)} · ${fmt(pts[pts.length-1].v)}</span></div>`)}},
+    return wcard('Net worth over time',`<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Net worth from ${fmt(pts[0].v)} on ${fd(pts[0].d)} to ${fmt(pts[pts.length-1].v)} on ${fd(pts[pts.length-1].d)}"><polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>${pts.map((p,i)=>{const[x,y]=xy(p),pv=i?p.v-pts[i-1].v:null;return `<g><circle data-nwdot="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="var(--accent)"/><circle data-nwpt="${esc(fd(p.d)+' · '+fmt(p.v)+(pv===null?' · first saved balance':' · '+(pv>=0?'up ':'down ')+fmt(Math.abs(pv))+' since the one before'))}" data-i="${i}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="11" fill="transparent" role="img" aria-label="${esc(fd(p.d)+' '+fmt(p.v))}"/></g>`}).join('')}</svg><div class="meta" style="display:flex;justify-content:space-between"><span>${fd(pts[0].d)} · ${fmt(pts[0].v)}</span><span>${fd(pts[pts.length-1].d)} · ${fmt(pts[pts.length-1].v)}</span></div><div class="meta nwinfo" aria-live="polite" style="margin-top:4px">Tap a dot to see that day.</div>`)}},
   allocation:{t:'Where your money is',d:'Cash, investments and other assets as shares of your assets',r(){
     const T=acctTotals();if(!(T.assets>0))return wcard('Where your money is',needAcct());
     const seg=[['Cash',T.cash,'var(--ok)'],['Investments',T.inv,'var(--accent)'],['Other assets',T.oth,'var(--neutral)']];
@@ -1890,6 +2041,33 @@ function viewOverview(){
 }
 
 /* ---------- events ---------- */
+/* ---------- Edit panels: forms open in a panel instead of pushing the page down ---------- */
+const syncLock=()=>{document.body.style.overflow=(wrapSt||sheetOpen||document.getElementById('epanel'))?'hidden':''};
+function panelSpec(){
+  if(openId!==null&&draft){const t=find(openId);if(t)return {key:'tx'+openId,title:(t.split?'Edit split: ':'Split: ')+niceName(t.desc),html:editorHTML(t)}}
+  return panelExtra;
+}
+function renderPanel(){
+  const sp=panelSpec();let w=document.getElementById('epanel');
+  if(!sp){if(w){w.remove();syncLock()}return}
+  if(!w){
+    w=document.createElement('div');w.id='epanel';w.className='sheetbg';w.setAttribute('data-act','panelclose');
+    w.innerHTML='<div class="sheetp wide" data-act="sheetnoop" role="dialog" aria-modal="true" tabindex="-1"><div class="ptop"><h3></h3><button class="btn small" type="button" data-act="panelclose">Close</button></div><div class="pbody"></div></div>';
+    document.body.appendChild(w);w.dataset.key='';syncLock();
+  }
+  const pnl=w.querySelector('.sheetp'),st=pnl.scrollTop,fresh=w.dataset.key!==sp.key;
+  w.querySelector('h3').textContent=sp.title;pnl.setAttribute('aria-label',sp.title);
+  w.querySelector('.pbody').innerHTML=sp.html;
+  w.dataset.key=sp.key;pnl.scrollTop=fresh?0:st;
+  if(fresh){try{pnl.focus({preventScroll:true})}catch(e){}}
+}
+function panelClose(){
+  if(openId!==null)closeEditor();
+  logInc=null;openCats=new Set();goalEdit=null;render();
+}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&document.getElementById('epanel')&&!wrapSt&&!sheetOpen){e.preventDefault();panelClose()}
+});
 /* ---------- Home hero, one-at-a-time review, quick add ---------- */
 let rvSkip=new Set(),rvAll=false,sheetOpen=false,sheetPrev=null;
 function goView(v){if(location.hash.slice(1)===v){view=v;closeEditor();render()}else location.hash='#'+v}
@@ -1924,7 +2102,7 @@ function rvSuggest(t){
   return out.slice(0,3);
 }
 function rvCardHTML(t,n){
-  const r=matchRule(t.desc,S.rules),open=openId===t.id,def=(r&&r.cat&&S.cats.includes(r.cat))?r.cat:neutralCat();
+  const r=matchRule(t.desc,S.rules),open=false,def=(r&&r.cat&&S.cats.includes(r.cat))?r.cat:neutralCat();
   const remember=(!r&&t.cents>0&&!isP2P(t.desc))?`<div class="remember"><label class="field"><input type="checkbox" id="rem-${t.id}" checked> Remember: always file charges containing</label><input type="text" id="pat-${t.id}" value="${esc(merchantKey(t.desc))}" aria-label="Text to remember"><span>under the category chosen</span></div>`:'';
   const sug=rvSuggest(t),gas=(r&&r.gas&&t.cents>0&&S.cats.includes('Fuel')&&!sug.includes('Fuel'));
   const chips=sug.map(c=>`<button class="btn rvchip" type="button" data-act="assigncat" data-id="${t.id}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')+(gas?`<button class="btn rvchip" type="button" data-act="assigncat" data-id="${t.id}" data-cat="Gas">It was gas</button>`:'');
@@ -1951,7 +2129,7 @@ function sheetOpenF(){
 }
 function sheetClose(quiet){
   if(!sheetOpen)return;
-  sheetOpen=false;const w=$('#sheet');if(w)w.remove();document.body.style.overflow='';
+  sheetOpen=false;const w=$('#sheet');if(w)w.remove();syncLock();
   if(!quiet){try{if(sheetPrev&&document.contains(sheetPrev))sheetPrev.focus()}catch(e){}}
 }
 document.addEventListener('keydown',e=>{
@@ -2054,7 +2232,7 @@ function wrapGo(n){
 }
 function wrapClose(){
   if(!wrapSt)return;
-  wrapSt=null;const w=$('#wrap');if(w)w.remove();document.body.style.overflow='';
+  wrapSt=null;const w=$('#wrap');if(w)w.remove();syncLock();
   render();
   try{if(wrapPrevFocus&&document.contains(wrapPrevFocus))wrapPrevFocus.focus()}catch(e){}
 }
@@ -2112,7 +2290,7 @@ document.addEventListener('click',e=>{
     case 'undo':{if(undoSnap){S=JSON.parse(undoSnap);undoSnap=null;closeEditor();save();render();toast('Undone.')}break}
     case 'editbudget':editB=b.dataset.name;render();{const i=$('#bedit');if(i){i.focus();i.select()}}break;
     case 'toggleempty':showEmpty=!showEmpty;render();break;
-    case 'togcat':{const n=b.dataset.name;if(openCats.has(n))openCats.delete(n);else openCats.add(n);render();break}
+    case 'togcat':{const n=b.dataset.name;if(openCats.has(n))openCats=new Set();else{openCats=new Set([n]);goalEdit=null}render();break}
     case 'setuptoggle':S.setupHidden=!S.setupHidden;commit();break;
     case 'tgroup':{const g=b.dataset.g,st=stats();const cs=(groupedCats().find(x=>x[0]===g)||[g,[]])[1],gp=sum(cs.map(c=>(planFor(curMonth).budgets||{})[c]||0)),gs=sum(cs.map(c=>st.spent[c]||0));
       if(groupOpen0(g,gp,gs)){collapsedG.add(g);expandedG.delete(g)}else{expandedG.add(g);collapsedG.delete(g)}render();break}
@@ -2215,6 +2393,23 @@ document.addEventListener('click',e=>{
     case 'dashup':case 'dashdown':{const l=dashList().slice(),w=b.dataset.w,i=l.indexOf(w),j=a==='dashup'?i-1:i+1;if(i<0||j<0||j>=l.length)break;[l[i],l[j]]=[l[j],l[i]];S.dash={preset:'custom',list:l};commit();break}
     case 'tbl':showTbl=!showTbl;render();break;
     case 'afilter':actFilter=b.dataset.f;render();break;
+    case 'wview':S.wview=b.dataset.v;wsel=null;save();refreshWmw();break;
+    case 'wsel':{const k=b.dataset.k;wsel=wsel===k?null:k;refreshWmw();break}
+    case 'catadd':{
+      const c=b.dataset.name,dEl=$('#ca-date'),nEl=$('#ca-desc'),aEl=$('#ca-amt');if(!dEl||!nEl||!aEl)break;
+      const date=dEl.value,desc=nEl.value.trim(),cents=parseMoney(aEl.value);
+      if(!desc){toast('Enter where the money went, like Chick-fil-A.');break}
+      if(!(cents>0)){toast('Enter an amount like 12.50.');break}
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(date)||!date.startsWith(curMonth)){toast('Pick a date in '+monthLabel(curMonth)+'.');break}
+      const snap=snapshot();
+      S.txs.push({id:++S.seq,date,desc,cents,manual:true,entered:true,status:'done',split:null,allocations:[{cat:c,cents}]});
+      commit();toast(`Added ${fmt(cents)} at ${niceName(desc)} to ${c}.`,snap);
+      const nx=$('#ca-desc');if(nx)nx.focus();break}
+    case 'catrm':{const t=find(id);if(t){const snap=snapshot();if(!t.entered){S.dismissed=S.dismissed||[];S.dismissed.push({date:t.date,desc:t.desc,cents:t.cents})}S.txs=S.txs.filter(x=>x.id!==id);commit();toast(`Removed ${niceName(t.desc)} (${fmt(t.cents)}).`+(t.entered?'':' It will not come back if you import the same file.'),snap)}break}
+    case 'store':qText=b.dataset.name;actAll=true;actFilter='all';render();window.scrollTo(0,0);break;
+    case 'qclear':qText='';actFilter='all';actAll=false;render();break;
+    case 'aall':actAll=!actAll;render();break;
+    case 'panelclose':panelClose();break;
     case 'menu':menuId=(menuId===id?null:id);render();break;
     case 'confirmguess':confirmGuesses();break;
     case 'defaultall':defaultMixed();break;
@@ -2266,20 +2461,49 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&editB!==null){editB=null;render()}
   if(e.key==='Enter'&&e.target.id==='ren-in'){e.preventDefault();const bt=document.querySelector('[data-act="rensave"]');if(bt)bt.click()}
   if(e.key==='Escape'&&e.target.id==='ren-in'){renaming=null;render()}
+  if(e.key==='Enter'&&(e.target.id==='ca-desc'||e.target.id==='ca-amt')){e.preventDefault();const bt=document.querySelector('[data-act="catadd"]');if(bt)bt.click()}
   if(e.key==='Enter'&&(e.target.id==='af-desc'||e.target.id==='af-amt')){e.preventDefault();addManual()}
   if(e.key==='Enter'&&(e.target.id==='newincname'||e.target.id==='newincamt')){e.preventDefault();const b=document.querySelector('[data-act="addinc"]');if(b)b.click()}
 });
-document.addEventListener('pointermove',e=>{
-  const w=e.target.closest&&e.target.closest('.lcwrap'),tip=$('#lctip'),x=$('#lcx');
-  if(!w||!lcData||!tip||!x){if(tip)tip.classList.remove('on');if(x)x.setAttribute('opacity','0');return}
-  const svg=w.querySelector('svg'),r=svg.getBoundingClientRect(),L=lcData;
-  const vx=(e.clientX-r.left)/r.width*L.W;
-  const d=Math.min(L.last,Math.max(1,Math.round(1+(vx-L.pl)/L.iw*(L.dim-1))));
+function lcPlace(d,op){
+  const L=lcData,x=$('#lcx'),dot=$('#lcdot');if(!L||!x)return 0;
   const px=L.pl+(L.dim>1?(d-1)/(L.dim-1):0)*L.iw;
-  x.setAttribute('x1',px);x.setAttribute('x2',px);x.setAttribute('opacity','.35');
+  x.setAttribute('x1',px);x.setAttribute('x2',px);x.setAttribute('opacity',op);
+  if(dot){dot.setAttribute('cx',px);dot.setAttribute('cy',L.py[d]);dot.setAttribute('opacity',op>0?1:0)}
+  return px;
+}
+function lcDayAt(e,w){
+  const svg=w.querySelector('svg'),r=svg.getBoundingClientRect(),L=lcData;
+  if(!r.width)return L.last;
+  const vx=(e.clientX-r.left)/r.width*L.W;
+  return Math.min(L.last,Math.max(1,Math.round(1+(vx-L.pl)/L.iw*(L.dim-1))));
+}
+function lcRestore(){
+  const tip=$('#lctip');if(tip)tip.classList.remove('on');
+  if(!lcData||!$('#lcx'))return;
+  if(lcPin&&lcPin.m===lcData.month&&lcPin.d<=lcData.last)lcPlace(lcPin.d,.35);else lcPlace(1,0);
+}
+document.addEventListener('pointermove',e=>{
+  const w=e.target.closest&&e.target.closest('.lcwrap'),tip=$('#lctip');
+  if(!w||!lcData||!tip||!w.querySelector('svg')){lcRestore();return}
+  const L=lcData,d=lcDayAt(e,w),px=lcPlace(d,.35);
   const pace=L.isCur&&L.budget>0?`<br>Even pace ${fmt(Math.round(L.budget*d/L.dim))}`:'';
   tip.innerHTML=`<b>${monthShort(L.month)} ${d}</b><br>Spent ${fmt(L.cum[d])}${L.cum[d]>L.budget&&L.budget>0?' (over budget)':''}<br>Budget ${fmt(L.budget)}${pace}`;
   const pct=px/L.W*100;tip.style.left=Math.min(88,Math.max(12,pct))+'%';tip.classList.add('on');
+});
+document.addEventListener('click',e=>{
+  const t=e.target;if(!t.closest)return;
+  const w=t.closest('.lcwrap');
+  if(w&&lcData&&w.querySelector('svg')){
+    const d=lcDayAt(e,w);lcPin={m:lcData.month,d};lcPlace(d,.35);
+    const det=$('#lcdet');if(det)det.innerHTML=lcDetail(lcData,d);
+    return;
+  }
+  const pt=t.closest('[data-nwpt]');
+  if(pt){const box=pt.closest('.card')||document,info=box.querySelector('.nwinfo');if(info)info.textContent=pt.getAttribute('data-nwpt');box.querySelectorAll('[data-nwdot]').forEach(c=>c.setAttribute('r',c===pt.parentNode.querySelector('[data-nwdot="'+pt.dataset.i+'"]')?'5':'3'))}
+});
+document.addEventListener('keydown',e=>{
+  if((e.key==='Enter'||e.key===' ')&&e.target&&e.target.getAttribute&&e.target.getAttribute('data-act')==='wsel'&&e.target.tagName!=='BUTTON'){e.preventDefault();e.target.dispatchEvent(new MouseEvent('click',{bubbles:true}))}
 });
 document.addEventListener('change',e=>{
   const el=e.target,id=el.id,d=el.dataset;
