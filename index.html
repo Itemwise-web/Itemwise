@@ -275,15 +275,20 @@ table.prev td.r,table.prev th.r{text-align:right}
 }
 @media (max-width:420px){.strip small{display:none}.tabs a{font-size:12px}}
 
-/* Month wrapped */
+/* The Tally */
+.tally{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;margin:0 0 12px;padding:13px 16px;border:0;border-radius:12px;color:#fff;background:linear-gradient(120deg,#1B2B6B,#5B2A86);font:inherit;font-size:15px;text-align:left;cursor:pointer}
+.tally b{font-family:var(--font-display);font-weight:600;font-size:16px}
+.tally .tgo{font-weight:600;white-space:nowrap}
+.tally .tnew{font-style:normal;font-size:11px;font-weight:700;background:#fff;color:#1B2B6B;border-radius:99px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+.tally:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 .wnote{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;background:var(--accent-soft);color:var(--ink)}
-.wrap{position:fixed;inset:0;z-index:60;color:#fff;display:flex;flex-direction:column;padding:max(env(safe-area-inset-top,0px),14px) 20px max(env(safe-area-inset-bottom,0px),14px);overflow:hidden;font-family:var(--font-body)}
-.wrap.bg0{background:linear-gradient(160deg,#1B2B6B,#5B2A86)}
-.wrap.bg1{background:linear-gradient(160deg,#0B5D4B,#1B3F8F)}
-.wrap.bg2{background:linear-gradient(160deg,#8A2B0F,#9B2058)}
-.wrap.bg3{background:linear-gradient(160deg,#4A1D7A,#0F5F73)}
-.wrap.bg4{background:linear-gradient(160deg,#7A1F4F,#2C2E8F)}
-.wrap.bg5{background:linear-gradient(160deg,#0F4C5C,#1B5E20)}
+.wov{position:fixed;inset:0;z-index:60;color:#fff;display:flex;flex-direction:column;padding:max(env(safe-area-inset-top,0px),14px) 20px max(env(safe-area-inset-bottom,0px),14px);overflow:hidden;font-family:var(--font-body)}
+.wov.bg0{background:linear-gradient(160deg,#1B2B6B,#5B2A86)}
+.wov.bg1{background:linear-gradient(160deg,#0B5D4B,#1B3F8F)}
+.wov.bg2{background:linear-gradient(160deg,#8A2B0F,#9B2058)}
+.wov.bg3{background:linear-gradient(160deg,#4A1D7A,#0F5F73)}
+.wov.bg4{background:linear-gradient(160deg,#7A1F4F,#2C2E8F)}
+.wov.bg5{background:linear-gradient(160deg,#0F4C5C,#1B5E20)}
 .wbars{display:flex;gap:4px;max-width:560px;width:100%;margin:0 auto}
 .wbars span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.3)}
 .wbars span.done,.wbars span.now{background:#fff}
@@ -308,11 +313,11 @@ table.prev td.r,table.prev th.r{text-align:right}
 .wzone.l{left:0}.wzone.r{right:0}
 .wnav{display:flex;gap:10px;justify-content:space-between;position:relative;z-index:2;max-width:560px;width:100%;margin:0 auto}
 .wnav .sp{flex:1}
-.wrap .btn{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.45);min-height:44px;padding:0 20px}
-.wrap .btn.primary{background:#fff;color:#1a1a2e;border-color:#fff}
-.wrap .btn:disabled{opacity:.4}
-.wrap:focus{outline:none}
-.wrap :focus-visible{outline:3px solid #fff;outline-offset:2px}
+.wov .btn{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.45);min-height:44px;padding:0 20px}
+.wov .btn.primary{background:#fff;color:#1a1a2e;border-color:#fff}
+.wov .btn:disabled{opacity:.4}
+.wov:focus{outline:none}
+.wov :focus-visible{outline:3px solid #fff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.wslide>*,.wrow .tk i{animation:none}}
 </style>
 
@@ -322,6 +327,7 @@ table.prev td.r,table.prev th.r{text-align:right}
   </header>
   <div id="notice"></div>
   <div class="monthbar" id="monthbar"></div>
+  <div id="tally"></div>
   <section class="strip" id="strip" aria-label="Month summary"></section>
   <nav class="tabs" id="tabs" aria-label="Sections"></nav>
   <main id="view"></main>
@@ -1139,7 +1145,7 @@ function assign(id,cat){
 }
 
 /* ---------- views ---------- */
-function renderNotice(){$('#notice').innerHTML=(typeof wrapBannerHTML==='function'?wrapBannerHTML():'')+(typeof conflictHTML==='function'?conflictHTML():'')+(storageOK?'':`<div class="notice">This browser is blocking storage, so changes will be lost when you close the page. Open the Data tab and copy a backup before you leave.</div>`)}
+function renderNotice(){$('#notice').innerHTML=(typeof conflictHTML==='function'?conflictHTML():'')+(storageOK?'':`<div class="notice">This browser is blocking storage, so changes will be lost when you close the page. Open the Data tab and copy a backup before you leave.</div>`)}
 function renderMonthbar(){
   const ms=months(),i=ms.indexOf(curMonth);
   $('#monthbar').innerHTML=`<button class="btn small" type="button" data-act="prev"${i>0?'':' disabled'} aria-label="Previous month">‹</button><span>${monthLabel(curMonth)}</span><button class="btn small" type="button" data-act="next"${(i>=0&&i<ms.length-1)?'':' disabled'} aria-label="Next month">›</button>`;
@@ -1173,7 +1179,7 @@ function renderTabs(){
   $('#tabs').innerHTML=h;
 }
 function render(){
-  ensureMonth();renderNotice();renderMonthbar();renderStrip();renderTabs();
+  ensureMonth();renderNotice();renderMonthbar();renderTally();renderStrip();renderTabs();
   const fn={tabs:viewTabs,overview:viewOverview,accounts:viewAccounts,review:viewReview,budgets:viewBudgets,activity:viewActivity,import:viewImport,rules:viewRules,data:viewData,more:viewMore}[view]||viewReview;
   $('#view').innerHTML=fn();
 }
@@ -1449,7 +1455,7 @@ function viewBudgets(){
    <div class="cols"><section class="card"><h3>Month so far</h3><p class="meta" style="margin:2px 0 8px">Your running total against your whole plan. Hover or drag across it for any day.</p>${monthChart(budgeted)}</section>
    <section class="card">${composeHTML(st)}</section></div>
    <div class="legend" style="margin:0 0 10px"><span>${sw('var(--ok)')}Within plan</span><span>${sw('var(--bad)')}Over</span><span>${sw('repeating-linear-gradient(135deg,var(--neutral) 0 3px,transparent 3px 6px)')}Waiting for review</span>${isCur?`<span>${sw('var(--ink)','width:2px;height:12px;opacity:.55;border-radius:1px')}Even pace for today</span>`:''}</div>`:hold;
-  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done editing':'Edit boxes and categories'}</button>${stats(curMonth).n?`<button class="btn small" type="button" data-act="wrapopen" data-m="${curMonth}">✨ ${monthShort(curMonth)} wrapped</button>`:''}${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
+  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done editing':'Edit boxes and categories'}</button>${stats(curMonth).n?`<button class="btn small" type="button" data-act="wrapopen" data-m="${curMonth}">✨ ${monthShort(curMonth)} Tally</button>`:''}${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
   return `${setupCard}${planCard}${goalsCard()}${spendBlock}${arrBar}${STARTER&&!arrange?`<div class="actions" style="margin:0 0 8px"><button class="btn small ghost" type="button" data-act="gall" data-v="1">Open all</button><button class="btn small ghost" type="button" data-act="gall" data-v="0">Close all</button></div>`:''}${groupCards}
    ${trendsHTML()}
    <section class="card"><h3>Check against your bank</h3>
@@ -1605,7 +1611,7 @@ function viewRules(){
 function viewMore(){
   const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5),over=order.filter(k=>!inBar.includes(k));
   return `<div class="stack">${over.map(k=>`<section class="card"><h3>${TAB_LABELS[k]}</h3><p class="meta" style="margin:4px 0 10px">${TAB_DESC[k]}</p><a class="btn" href="#${k}">Open ${TAB_LABELS[k].toLowerCase()}</a></section>`).join('')}
-  ${stats(curMonth).n?`<section class="card"><h3>Month wrapped</h3><p class="meta" style="margin:4px 0 10px">A quick look back at how ${monthLabel(curMonth)} went.</p><button class="btn" type="button" data-act="wrapopen" data-m="${curMonth}">Watch ${monthShort(curMonth)} wrapped</button></section>`:''}
+  ${stats(curMonth).n?`<section class="card"><h3>The Tally</h3><p class="meta" style="margin:4px 0 10px">The Tally: a quick look back at how ${monthLabel(curMonth)} went.</p><button class="btn" type="button" data-act="wrapopen" data-m="${curMonth}">Watch the ${monthShort(curMonth)} Tally</button></section>`:''}
   <section class="card"><h3>Customize tabs</h3><p class="meta" style="margin:4px 0 10px">Choose which tabs show along the top and put them in your order.</p><a class="btn" href="#tabs">Customize tabs</a></section></div>`;
 }
 function viewTabs(){
@@ -1860,7 +1866,13 @@ function wrapCandidate(){
   if(!m||wrapSeen().includes(m)||wrapMem.includes(m))return null;
   return stats(m).n>0?m:null;
 }
-function wrapBannerHTML(){const m=wrapCandidate();return m?`<div class="notice wnote"><span>✨ Your <b>${esc(monthLabel(m))}</b> wrapped is ready.</span><span><button class="btn small primary" type="button" data-act="wrapopen" data-m="${m}">Watch</button> <button class="btn small ghost" type="button" data-act="wrapskip" data-m="${m}">Not now</button></span></div>`:''}
+function renderTally(){
+  const e=$('#tally');if(!e)return;
+  if(!curMonth||!stats(curMonth).n){e.innerHTML='';return}
+  const nw=wrapCandidate()===curMonth,mn=monthLabel(curMonth).split(' ')[0];
+  e.innerHTML=`<button class="tally" type="button" data-act="wrapopen" data-m="${curMonth}"><span><b>The Tally</b> - Your ${esc(mn)} review${nw?' <em class="tnew">New</em>':''}</span><span aria-hidden="true" class="tgo">Watch ›</span></button>`;
+}
+function wrapBannerHTML(){const m=wrapCandidate();return m?`<div class="notice wnote"><span>✨ Your <b>${esc(monthLabel(m))}</b> Tally is ready.</span><span><button class="btn small primary" type="button" data-act="wrapopen" data-m="${m}">Watch</button> <button class="btn small ghost" type="button" data-act="wrapskip" data-m="${m}">Not now</button></span></div>`:''}
 function wrapData(m){
   const st=stats(m),plan=planFor(m),B=plan.budgets||{},own=plan.key===m,budgeted=plannedSpend(m);
   const rows=S.cats.filter(c=>!isSav(groupOf(c))).map(c=>{const ri=rollInfo(c,m);return {c,sp:st.spent[c]||0,lim:(B[c]||0)+(ri?ri.carry:0)}}).filter(r=>r.lim>0||r.sp>0);
@@ -1893,7 +1905,7 @@ function wrapData(m){
 function wrapSlides(d){
   const S2=[],add=h=>S2.push({bg:S2.length%6,h});
   const diff=d.budgeted-d.total;
-  add(`<p class="wk">${esc(monthLabel(d.m))}</p><h2 class="wbig">Your month, wrapped</h2><p class="wsub">Here is how it went. Tap to move through.</p>`);
+  add(`<p class="wk">${esc(monthLabel(d.m))}</p><h2 class="wbig">The Tally</h2><p class="wsub">Here is how it went. Tap to move through.</p>`);
   add(`<p class="wk">You spent</p><p class="wnum">${fmt(d.total)}</p>${d.budgeted>0?(Math.abs(diff)<=OVER_SLACK?`<p class="wsub">Right on the <b>${fmt(d.budgeted)}</b> you planned.</p>`:(diff>0?`<p class="wsub"><b>${fmt(diff)}</b> under the ${fmt(d.budgeted)} you planned.</p>`:`<p class="wsub"><b>${fmt(-diff)}</b> over the ${fmt(d.budgeted)} you planned.</p>`)):'<p class="wsub">There was no plan set for this month.</p>'}<p class="wfine">About ${fmt(Math.round(d.total/Math.max(d.days,1)))} a day across ${d.days} days${d.pending?`. ${d.pending} charge${d.pending===1?' was':'s were'} still waiting in Review (${fmt(d.unalloc)}).`:'.'}</p>`);
   if(d.spendRows.length){const top=d.spendRows.slice(0,3);add(`<p class="wk">Where it went</p><h2 class="wbig">${esc(top[0].c)} led the way</h2>${top.map((r,i)=>`<div class="wrow"><span>${i+1}. ${esc(r.c)}</span><span>${fmt(r.sp)}</span><div class="tk"><i style="width:${Math.max(Math.round(r.sp/d.spendTot*100),3)}%"></i></div></div>`).join('')}<p class="wfine">${top.length>1?`The top ${top.length} made up ${Math.round(sum(top.map(r=>r.sp))/d.spendTot*100)}% of your spending.`:'That was most of your spending.'}</p>`)}
   const facts=[];
@@ -1912,9 +1924,9 @@ function wrapSlides(d){
 function wrapRender(){
   const w=$('#wrap');if(!w||!wrapSt)return;
   const sl=wrapSt.slides,i=wrapSt.i,s=sl[i],last=i===sl.length-1;
-  w.className='wrap bg'+s.bg;
+  w.className='wov bg'+s.bg;
   w.innerHTML=`<div class="wbars" aria-hidden="true">${sl.map((x,k)=>`<span class="${k<i?'done':k===i?'now':''}"></span>`).join('')}</div>
-   <button class="wx" type="button" data-act="wrapclose" aria-label="Close your wrapped">×</button>
+   <button class="wx" type="button" data-act="wrapclose" aria-label="Close the Tally">×</button>
    <div class="wslide" role="group" aria-live="polite" aria-label="Slide ${i+1} of ${sl.length}">${s.h}</div>
    <button class="wzone l" type="button" data-act="wrapprev" aria-label="Previous slide" tabindex="-1"></button>
    <button class="wzone r" type="button" data-act="wrapnext" aria-label="Next slide" tabindex="-1"></button>
@@ -1925,7 +1937,7 @@ function wrapOpen(m){
   const d=wrapData(m);wrapMark(m);
   wrapSt={m,i:0,slides:wrapSlides(d)};
   wrapPrevFocus=document.activeElement;
-  const w=document.createElement('div');w.id='wrap';w.setAttribute('role','dialog');w.setAttribute('aria-modal','true');w.setAttribute('aria-label',monthLabel(m)+' wrapped');
+  const w=document.createElement('div');w.id='wrap';w.setAttribute('role','dialog');w.setAttribute('aria-modal','true');w.setAttribute('aria-label',monthLabel(m)+' Tally');
   document.body.appendChild(w);document.body.style.overflow='hidden';w.tabIndex=-1;wrapRender();w.focus({preventScroll:true});
 }
 function wrapGo(n){
