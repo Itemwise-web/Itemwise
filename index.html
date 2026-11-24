@@ -274,6 +274,46 @@ table.prev td.r,table.prev th.r{text-align:right}
   .ln .x,.ln>span:last-child{grid-column:2}
 }
 @media (max-width:420px){.strip small{display:none}.tabs a{font-size:12px}}
+
+/* Month wrapped */
+.wnote{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;background:var(--accent-soft);color:var(--ink)}
+.wrap{position:fixed;inset:0;z-index:60;color:#fff;display:flex;flex-direction:column;padding:max(env(safe-area-inset-top,0px),14px) 20px max(env(safe-area-inset-bottom,0px),14px);overflow:hidden;font-family:var(--font-body)}
+.wrap.bg0{background:linear-gradient(160deg,#1B2B6B,#5B2A86)}
+.wrap.bg1{background:linear-gradient(160deg,#0B5D4B,#1B3F8F)}
+.wrap.bg2{background:linear-gradient(160deg,#8A2B0F,#9B2058)}
+.wrap.bg3{background:linear-gradient(160deg,#4A1D7A,#0F5F73)}
+.wrap.bg4{background:linear-gradient(160deg,#7A1F4F,#2C2E8F)}
+.wrap.bg5{background:linear-gradient(160deg,#0F4C5C,#1B5E20)}
+.wbars{display:flex;gap:4px;max-width:560px;width:100%;margin:0 auto}
+.wbars span{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.3)}
+.wbars span.done,.wbars span.now{background:#fff}
+.wx{position:absolute;top:calc(max(env(safe-area-inset-top,0px),14px) + 12px);right:12px;z-index:3;width:44px;height:44px;border-radius:99px;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:26px;line-height:1;cursor:pointer}
+.wslide{flex:1;display:flex;flex-direction:column;justify-content:center;max-width:560px;width:100%;margin:0 auto;gap:12px;min-height:0;overflow:auto}
+.wslide>*{animation:wup .5s ease both}
+.wslide>*:nth-child(2){animation-delay:.12s}.wslide>*:nth-child(3){animation-delay:.24s}.wslide>*:nth-child(4){animation-delay:.36s}.wslide>*:nth-child(5){animation-delay:.48s}
+@keyframes wup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes wgrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.wk{font-size:13px;letter-spacing:.1em;text-transform:uppercase;opacity:.9;margin:0;font-weight:600}
+.wbig{font-family:var(--font-display);font-size:clamp(34px,9vw,56px);line-height:1.05;font-weight:700;margin:0;text-wrap:balance}
+.wnum{font-family:var(--font-display);font-size:clamp(52px,16vw,96px);font-weight:700;line-height:1;margin:0;font-variant-numeric:tabular-nums}
+.wsub{font-size:20px;margin:0;line-height:1.35}
+.wfine{font-size:14px;opacity:.9;margin:0}
+.wrow{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:6px 0;font-size:18px}
+.wrow .tk{grid-column:1/-1;height:8px;border-radius:99px;background:rgba(255,255,255,.22);overflow:hidden}
+.wrow .tk i{display:block;height:100%;background:#fff;border-radius:99px;transform-origin:left;animation:wgrow .8s ease both .3s}
+.wfact{background:rgba(255,255,255,.14);border-radius:14px;padding:12px 14px}
+.wfact small{display:block;opacity:.9;font-size:13px}
+.wfact b{font-size:20px;font-weight:600}
+.wzone{position:absolute;top:calc(max(env(safe-area-inset-top,0px),14px) + 60px);bottom:calc(max(env(safe-area-inset-bottom,0px),14px) + 64px);width:50%;background:none;border:0;padding:0;cursor:pointer;z-index:1}
+.wzone.l{left:0}.wzone.r{right:0}
+.wnav{display:flex;gap:10px;justify-content:space-between;position:relative;z-index:2;max-width:560px;width:100%;margin:0 auto}
+.wnav .sp{flex:1}
+.wrap .btn{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.45);min-height:44px;padding:0 20px}
+.wrap .btn.primary{background:#fff;color:#1a1a2e;border-color:#fff}
+.wrap .btn:disabled{opacity:.4}
+.wrap:focus{outline:none}
+.wrap :focus-visible{outline:3px solid #fff;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.wslide>*,.wrow .tk i{animation:none}}
 </style>
 
 <div class="wrap">
@@ -1099,7 +1139,7 @@ function assign(id,cat){
 }
 
 /* ---------- views ---------- */
-function renderNotice(){$('#notice').innerHTML=(typeof conflictHTML==='function'?conflictHTML():'')+(storageOK?'':`<div class="notice">This browser is blocking storage, so changes will be lost when you close the page. Open the Data tab and copy a backup before you leave.</div>`)}
+function renderNotice(){$('#notice').innerHTML=(typeof wrapBannerHTML==='function'?wrapBannerHTML():'')+(typeof conflictHTML==='function'?conflictHTML():'')+(storageOK?'':`<div class="notice">This browser is blocking storage, so changes will be lost when you close the page. Open the Data tab and copy a backup before you leave.</div>`)}
 function renderMonthbar(){
   const ms=months(),i=ms.indexOf(curMonth);
   $('#monthbar').innerHTML=`<button class="btn small" type="button" data-act="prev"${i>0?'':' disabled'} aria-label="Previous month">‹</button><span>${monthLabel(curMonth)}</span><button class="btn small" type="button" data-act="next"${(i>=0&&i<ms.length-1)?'':' disabled'} aria-label="Next month">›</button>`;
@@ -1409,7 +1449,7 @@ function viewBudgets(){
    <div class="cols"><section class="card"><h3>Month so far</h3><p class="meta" style="margin:2px 0 8px">Your running total against your whole plan. Hover or drag across it for any day.</p>${monthChart(budgeted)}</section>
    <section class="card">${composeHTML(st)}</section></div>
    <div class="legend" style="margin:0 0 10px"><span>${sw('var(--ok)')}Within plan</span><span>${sw('var(--bad)')}Over</span><span>${sw('repeating-linear-gradient(135deg,var(--neutral) 0 3px,transparent 3px 6px)')}Waiting for review</span>${isCur?`<span>${sw('var(--ink)','width:2px;height:12px;opacity:.55;border-radius:1px')}Even pace for today</span>`:''}</div>`:hold;
-  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done editing':'Edit boxes and categories'}</button>${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
+  const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done editing':'Edit boxes and categories'}</button>${stats(curMonth).n?`<button class="btn small" type="button" data-act="wrapopen" data-m="${curMonth}">✨ ${monthShort(curMonth)} wrapped</button>`:''}${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
   return `${setupCard}${planCard}${goalsCard()}${spendBlock}${arrBar}${STARTER&&!arrange?`<div class="actions" style="margin:0 0 8px"><button class="btn small ghost" type="button" data-act="gall" data-v="1">Open all</button><button class="btn small ghost" type="button" data-act="gall" data-v="0">Close all</button></div>`:''}${groupCards}
    ${trendsHTML()}
    <section class="card"><h3>Check against your bank</h3>
@@ -1565,6 +1605,7 @@ function viewRules(){
 function viewMore(){
   const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5),over=order.filter(k=>!inBar.includes(k));
   return `<div class="stack">${over.map(k=>`<section class="card"><h3>${TAB_LABELS[k]}</h3><p class="meta" style="margin:4px 0 10px">${TAB_DESC[k]}</p><a class="btn" href="#${k}">Open ${TAB_LABELS[k].toLowerCase()}</a></section>`).join('')}
+  ${stats(curMonth).n?`<section class="card"><h3>Month wrapped</h3><p class="meta" style="margin:4px 0 10px">A quick look back at how ${monthLabel(curMonth)} went.</p><button class="btn" type="button" data-act="wrapopen" data-m="${curMonth}">Watch ${monthShort(curMonth)} wrapped</button></section>`:''}
   <section class="card"><h3>Customize tabs</h3><p class="meta" style="margin:4px 0 10px">Choose which tabs show along the top and put them in your order.</p><a class="btn" href="#tabs">Customize tabs</a></section></div>`;
 }
 function viewTabs(){
@@ -1807,12 +1848,120 @@ function viewOverview(){
 }
 
 /* ---------- events ---------- */
+/* ---------- Month wrapped: a story-style look back at one month ---------- */
+let wrapSt=null,wrapPrevFocus=null,wrapMem=[],wSwipeT=0,wX=null;
+const WSEEN='iw-wrap-seen';
+function wrapSeen(){try{return JSON.parse(localStorage.getItem(WSEEN)||'[]')}catch(e){return wrapMem}}
+function wrapMark(m){if(!m)return;wrapMem.push(m);try{const a=wrapSeen();if(!a.includes(m)){a.push(m);localStorage.setItem(WSEEN,JSON.stringify(a.slice(-36)))}}catch(e){}}
+/* Offered in the last 3 days of a month, and for the first 10 days of the next. Shown once per device, so each person sees their own. */
+function wrapCandidate(){
+  const dim=daysIn(todayKey),d=today.getDate();
+  const m=d>=dim-2?todayKey:(d<=10?ymAdd(todayKey,-1):null);
+  if(!m||wrapSeen().includes(m)||wrapMem.includes(m))return null;
+  return stats(m).n>0?m:null;
+}
+function wrapBannerHTML(){const m=wrapCandidate();return m?`<div class="notice wnote"><span>✨ Your <b>${esc(monthLabel(m))}</b> wrapped is ready.</span><span><button class="btn small primary" type="button" data-act="wrapopen" data-m="${m}">Watch</button> <button class="btn small ghost" type="button" data-act="wrapskip" data-m="${m}">Not now</button></span></div>`:''}
+function wrapData(m){
+  const st=stats(m),plan=planFor(m),B=plan.budgets||{},own=plan.key===m,budgeted=plannedSpend(m);
+  const rows=S.cats.filter(c=>!isSav(groupOf(c))).map(c=>{const ri=rollInfo(c,m);return {c,sp:st.spent[c]||0,lim:(B[c]||0)+(ri?ri.carry:0)}}).filter(r=>r.lim>0||r.sp>0);
+  const ok=rows.filter(r=>r.sp<=r.lim+OVER_SLACK);
+  const spendRows=rows.filter(r=>r.sp>0).sort((a,b)=>b.sp-a.sp),spendTot=sum(spendRows.map(r=>r.sp));
+  const room=rows.filter(r=>r.lim>0&&r.sp<=r.lim+OVER_SLACK).map(r=>({...r,gap:r.lim-r.sp})).sort((a,b)=>b.gap-a.gap);
+  const bust=rows.filter(r=>r.sp>r.lim+OVER_SLACK).map(r=>({...r,gap:r.sp-r.lim})).sort((a,b)=>b.gap-a.gap);
+  const ch=S.txs.filter(t=>t.date.startsWith(m)&&t.cents>0&&t.status!=='transfer'&&t.status!=='credit').map(t=>({t,amt:t.cents-savedPart(t)})).filter(x=>x.amt>0);
+  let biggest=null;ch.forEach(x=>{if(!biggest||x.amt>biggest.amt)biggest=x});
+  const mer={};ch.forEach(x=>{const n=niceName(x.t.desc);(mer[n]=mer[n]||{n,c:0,v:0});mer[n].c++;mer[n].v+=x.amt});
+  const topMer=Object.values(mer).filter(x=>x.c>=2).sort((a,b)=>b.c-a.c||b.v-a.v)[0]||null;
+  const wd=[0,0,0,0,0,0,0];ch.forEach(x=>{wd[new Date(x.t.date+'T12:00:00Z').getUTCDay()]+=x.amt});
+  const WDN=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const wmax=Math.max(...wd),busyDay=wmax>0?WDN[wd.indexOf(wmax)]:null;
+  const days=m===todayKey?today.getDate():daysIn(m),spendDays=new Set(ch.map(x=>x.t.date)).size,noSpend=Math.max(days-spendDays,0);
+  const incs=plan.income||[],planned=sum(incs.map(i=>i.cents)),got=own?sum(incs.map(i=>sum((i.rec||[]).map(r=>r.cents)))):0;
+  const extra=sum(S.txs.filter(t=>t.date.startsWith(m)&&dispOf(t)>0).map(dispOf));
+  const goals=S.cats.map(c=>{const g=goalInfo(c,m);return g?{c,pct:g.pct,left:g.left,done:g.done,target:g.target,saved:g.saved}:null}).filter(Boolean);
+  const pm=ymAdd(m,-1),pst=stats(pm),hasPrev=pst.n>0;
+  let streak=0;if(budgeted>0){for(let k=m,g=0;g<60;g++,k=ymAdd(k,-1)){const s2=stats(k),b2=plannedSpend(k);if(!s2.n||!(b2>0)||s2.total>b2+OVER_SLACK)break;streak++}}
+  const used=budgeted>0?st.total/budgeted:null,over=budgeted>0&&st.total>budgeted+OVER_SLACK;
+  let title,blurb;
+  if(!(budgeted>0)){title='The Fresh Start';blurb='You are just getting going. Set a plan next month and this recap gets a lot more interesting.'}
+  else if(over){title='The Plot Twist';blurb='This one ran past the plan. The slides show exactly where, so next month can go differently.'}
+  else if(used<=0.9){title=st.saved>0?'The Steady Saver':'The Cool Head';blurb=st.saved>0?'Under plan and money put away. That is the whole game.':'Comfortably under plan. Plenty of breathing room.'}
+  else if(used>=0.97){title='The Photo Finish';blurb='You landed almost exactly on your plan. That takes precision.'}
+  else{title='The Budget Boss';blurb='You stayed inside the plan from start to finish.'}
+  return {m,n:st.n,total:st.total,budgeted,over,used,days,pending:st.pending,unalloc:st.unalloc,saved:st.saved,rows,ok,spendRows,spendTot,room,bust,biggest,topMer,busyDay,noSpend,planned,got,extra,goals,hasPrev,prevTotal:pst.total,pm,streak,title,blurb};
+}
+function wrapSlides(d){
+  const S2=[],add=h=>S2.push({bg:S2.length%6,h});
+  const diff=d.budgeted-d.total;
+  add(`<p class="wk">${esc(monthLabel(d.m))}</p><h2 class="wbig">Your month, wrapped</h2><p class="wsub">Here is how it went. Tap to move through.</p>`);
+  add(`<p class="wk">You spent</p><p class="wnum">${fmt(d.total)}</p>${d.budgeted>0?(Math.abs(diff)<=OVER_SLACK?`<p class="wsub">Right on the <b>${fmt(d.budgeted)}</b> you planned.</p>`:(diff>0?`<p class="wsub"><b>${fmt(diff)}</b> under the ${fmt(d.budgeted)} you planned.</p>`:`<p class="wsub"><b>${fmt(-diff)}</b> over the ${fmt(d.budgeted)} you planned.</p>`)):'<p class="wsub">There was no plan set for this month.</p>'}<p class="wfine">About ${fmt(Math.round(d.total/Math.max(d.days,1)))} a day across ${d.days} days${d.pending?`. ${d.pending} charge${d.pending===1?' was':'s were'} still waiting in Review (${fmt(d.unalloc)}).`:'.'}</p>`);
+  if(d.spendRows.length){const top=d.spendRows.slice(0,3);add(`<p class="wk">Where it went</p><h2 class="wbig">${esc(top[0].c)} led the way</h2>${top.map((r,i)=>`<div class="wrow"><span>${i+1}. ${esc(r.c)}</span><span>${fmt(r.sp)}</span><div class="tk"><i style="width:${Math.max(Math.round(r.sp/d.spendTot*100),3)}%"></i></div></div>`).join('')}<p class="wfine">${top.length>1?`The top ${top.length} made up ${Math.round(sum(top.map(r=>r.sp))/d.spendTot*100)}% of your spending.`:'That was most of your spending.'}</p>`)}
+  const facts=[];
+  if(d.biggest)facts.push(`<div class="wfact"><small>Biggest single charge</small><b>${esc(niceName(d.biggest.t.desc))} · ${fmt(d.biggest.amt)}</b><small>${fd(d.biggest.t.date)}</small></div>`);
+  if(d.topMer)facts.push(`<div class="wfact"><small>Most visited</small><b>${esc(d.topMer.n)} · ${d.topMer.c} times</b><small>${fmt(d.topMer.v)} in all</small></div>`);
+  if(d.busyDay)facts.push(`<div class="wfact"><small>Your big spending day</small><b>${d.busyDay}s</b></div>`);
+  if(d.noSpend>0)facts.push(`<div class="wfact"><small>No-spend days</small><b>${d.noSpend} day${d.noSpend===1?'':'s'}</b><small>Days you bought nothing.</small></div>`);
+  if(facts.length)add(`<p class="wk">Moments</p><h2 class="wbig">The details</h2>${facts.join('')}`);
+  if(d.budgeted>0&&d.rows.length){add(`<p class="wk">Categories on track</p><p class="wnum">${d.ok.length} of ${d.rows.length}</p><p class="wsub">stayed within their budget.</p>${d.room[0]?`<div class="wfact"><small>Most room left</small><b>${esc(d.room[0].c)} · ${fmt(d.room[0].gap)}</b></div>`:''}${d.bust[0]?`<div class="wfact"><small>Went over most</small><b>${esc(d.bust[0].c)} · by ${fmt(d.bust[0].gap)}</b></div>`:''}`)}
+  if(d.saved>0||d.goals.length){add(`<p class="wk">Saving</p>${d.saved>0?`<p class="wnum">${fmt(d.saved)}</p><p class="wsub">put toward savings this month.</p>`:'<h2 class="wbig">Your goals</h2>'}${d.goals.slice(0,3).map(g=>`<div class="wrow"><span>${esc(g.c)}${g.done?' ✓':''}</span><span>${fmt(g.saved)} of ${fmt(g.target)}</span><div class="tk"><i style="width:${Math.max(Math.round(g.pct),2)}%"></i></div></div>`).join('')}`)}
+  if(d.planned>0||d.got>0||d.extra>0){add(`<p class="wk">Money in</p><p class="wnum">${fmt(d.got)}</p><p class="wsub">${d.planned>0?`received of the ${fmt(d.planned)} you expected.`:'received.'}</p>${d.extra>0?`<div class="wfact"><small>Extra on top (disposable income)</small><b>${fmt(d.extra)}</b></div>`:''}`)}
+  if(d.hasPrev||d.streak>=2){const dl=d.total-d.prevTotal;add(`<p class="wk">Over time</p>${d.hasPrev?`<h2 class="wbig">${dl===0?'Same as':(dl<0?fmt(-dl)+' less than':fmt(dl)+' more than')} ${esc(monthLabel(d.pm).split(' ')[0])}</h2><p class="wsub">${esc(monthLabel(d.pm))} was ${fmt(d.prevTotal)}.</p>`:''}${d.streak>=2?`<div class="wfact"><small>Streak</small><b>${d.streak} months in a row within plan</b></div>`:''}`)}
+  add(`<p class="wk">Your ${esc(monthLabel(d.m).split(' ')[0])} in one line</p><h2 class="wbig">${esc(d.title)}</h2><p class="wsub">${esc(d.blurb)}</p>`);
+  return S2;
+}
+function wrapRender(){
+  const w=$('#wrap');if(!w||!wrapSt)return;
+  const sl=wrapSt.slides,i=wrapSt.i,s=sl[i],last=i===sl.length-1;
+  w.className='wrap bg'+s.bg;
+  w.innerHTML=`<div class="wbars" aria-hidden="true">${sl.map((x,k)=>`<span class="${k<i?'done':k===i?'now':''}"></span>`).join('')}</div>
+   <button class="wx" type="button" data-act="wrapclose" aria-label="Close your wrapped">×</button>
+   <div class="wslide" role="group" aria-live="polite" aria-label="Slide ${i+1} of ${sl.length}">${s.h}</div>
+   <button class="wzone l" type="button" data-act="wrapprev" aria-label="Previous slide" tabindex="-1"></button>
+   <button class="wzone r" type="button" data-act="wrapnext" aria-label="Next slide" tabindex="-1"></button>
+   <div class="wnav"><button class="btn" type="button" data-act="wrapprev"${i?'':' disabled'}>Back</button><span class="sp"></span>${last?'<button class="btn" type="button" data-act="wrapreplay">Replay</button><button class="btn primary" type="button" data-act="wrapclose">Done</button>':'<button class="btn primary" type="button" data-act="wrapnext">Next</button>'}</div>`;
+}
+function wrapOpen(m){
+  if(!m||wrapSt)return;
+  const d=wrapData(m);wrapMark(m);
+  wrapSt={m,i:0,slides:wrapSlides(d)};
+  wrapPrevFocus=document.activeElement;
+  const w=document.createElement('div');w.id='wrap';w.setAttribute('role','dialog');w.setAttribute('aria-modal','true');w.setAttribute('aria-label',monthLabel(m)+' wrapped');
+  document.body.appendChild(w);document.body.style.overflow='hidden';w.tabIndex=-1;wrapRender();w.focus({preventScroll:true});
+}
+function wrapGo(n){
+  if(!wrapSt)return;
+  const j=wrapSt.i+n;
+  if(j>=wrapSt.slides.length){wrapClose();return}
+  if(j<0)return;
+  wrapSt.i=j;wrapRender();
+}
+function wrapClose(){
+  if(!wrapSt)return;
+  wrapSt=null;const w=$('#wrap');if(w)w.remove();document.body.style.overflow='';
+  render();
+  try{if(wrapPrevFocus&&document.contains(wrapPrevFocus))wrapPrevFocus.focus()}catch(e){}
+}
+document.addEventListener('keydown',e=>{
+  if(!wrapSt)return;
+  if(e.key==='Escape'){e.preventDefault();wrapClose()}
+  else if(e.key==='ArrowRight'){e.preventDefault();wrapGo(1)}
+  else if(e.key==='ArrowLeft'){e.preventDefault();wrapGo(-1)}
+  else if(e.key==='Tab'){const f=[...document.querySelectorAll('#wrap button:not([disabled]):not([tabindex="-1"])')];if(f.length){const a=document.activeElement,i=f.indexOf(a);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i<0||i===f.length-1)){e.preventDefault();f[0].focus()}}}
+});
+document.addEventListener('pointerdown',e=>{wX=(wrapSt&&e.target.closest&&e.target.closest('#wrap'))?e.clientX:null});
+document.addEventListener('pointerup',e=>{if(wrapSt&&wX!==null){const dx=e.clientX-wX;wX=null;if(dx<-60){wSwipeT=Date.now();wrapGo(1)}else if(dx>60){wSwipeT=Date.now();wrapGo(-1)}}});
 document.addEventListener('click',e=>{
   const b=e.target.closest('[data-act]');if(!b)return;
   const a=b.dataset.act,id=b.dataset.id?+b.dataset.id:null;
   if(a!=='menu'&&a!=='del')menuId=null;
   switch(a){
     case 'open':openEditor(id);break;
+    case 'wrapopen':wrapOpen(b.dataset.m||curMonth);break;
+    case 'wrapskip':wrapMark(b.dataset.m);render();break;
+    case 'wrapclose':wrapClose();break;
+    case 'wrapnext':if(Date.now()-wSwipeT>400)wrapGo(1);break;
+    case 'wrapprev':if(Date.now()-wSwipeT>400)wrapGo(-1);break;
+    case 'wrapreplay':if(wrapSt){wrapSt.i=0;wrapRender()}break;
     case 'cancel':closeEditor();render();break;
     case 'save':saveSplit();break;
     case 'assign':assign(id,$('#q-'+id).value);break;
