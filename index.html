@@ -407,6 +407,23 @@ button.crow:hover,button.crow.sel{background:var(--accent-soft)}
 .vrow:hover,.vrow.sel{background:var(--accent-soft)}
 .vrow .vh{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:13.5px}
 [data-nwpt]{cursor:pointer}
+
+/* Tour */
+.tourbar{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:min(640px,100%);max-height:62vh;overflow:auto;z-index:85;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:16px 16px 0 0;padding:14px 16px calc(14px + env(safe-area-inset-bottom,0px));box-shadow:0 -8px 28px rgba(0,0,0,.28)}
+.tourbar.tpos{top:0;bottom:auto;border-radius:0 0 16px 16px;padding:calc(14px + env(safe-area-inset-top,0px)) 16px 14px;box-shadow:0 8px 28px rgba(0,0,0,.28)}
+.tourbar .tk{font-size:12px;color:var(--muted)}
+.tourbar h3{font-size:17px;margin:2px 0 6px}
+.tourbar p{margin:0 0 6px;font-size:14.5px;line-height:1.45}
+.tourbar ul{margin:0 0 6px;padding-left:18px;font-size:14px;line-height:1.45}
+.tourbar .trow{display:flex;gap:8px;align-items:center;margin-top:10px}
+.tourbar .trow .sp{flex:1}
+.tchips{display:flex;gap:6px;overflow-x:auto;margin-top:10px;padding-bottom:4px;scrollbar-width:thin}
+.tchips button{flex:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;padding:3px 10px;font-size:12.5px;cursor:pointer;white-space:nowrap}
+.tchips button[aria-current="step"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tourspot{outline:3px solid var(--accent);outline-offset:3px;border-radius:12px;animation:tpulse 1.4s ease-in-out infinite}
+@keyframes tpulse{50%{outline-color:transparent}}
+@media (prefers-reduced-motion:reduce){.tourspot{animation:none}}
+.vtabs.sub{margin:2px 0 6px}.vtabs.sub button{font-size:12.5px;padding:3px 10px}
 </style>
 
 <div class="wrap">
@@ -785,7 +802,7 @@ const monthShort=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{mont
 const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
 let renaming=null,expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
-let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null,lcPin=null,wsel=null;
+let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null,lcPin=null,wsel=null,wdrill=null;
 let view='activity',openId=null,draft=null,curMonth=null,imp=null,qText='',actAll=false,panelExtra=null,delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1404,7 +1421,7 @@ function wmList(items,tot,mx,st){
   if(st.unalloc>0)h+=`<div class="crow" title="Needs review: ${fmt(st.unalloc)}"><span class="cn">Needs review</span><div class="ctrack" aria-hidden="true"><i class="hatch" style="width:${Math.min(st.unalloc/mx,1)*100}%"></i></div><span class="mono cv">${fmt(st.unalloc)}</span><span class="cp"></span></div>`;
   return h+`</div>`;
 }
-function wmPie(items,tot,st){
+function wmPie(items,tot,st,label){
   const sl=wmSlices(items),R=68,cx=100,cy=100,P=(a,r)=>[cx+r*Math.cos(a),cy+r*Math.sin(a)];
   let a0=-Math.PI/2,paths='';
   sl.forEach(x=>{
@@ -1414,16 +1431,8 @@ function wmPie(items,tot,st){
     a0+=ang;
   });
   const cur=sl.find(x=>x.k===wsel);
-  const mid=cur?`<text x="100" y="94" font-size="11">${esc(cur.c.length>14?cur.c.slice(0,13)+'…':cur.c)}</text><text x="100" y="112" font-size="15" font-weight="700">${compactMoney(cur.v)}</text><text x="100" y="126" font-size="10" style="fill:var(--muted)">${Math.round(cur.v/tot*100)}%</text>`:`<text x="100" y="98" font-size="11" style="fill:var(--muted)">Spent</text><text x="100" y="117" font-size="16" font-weight="700">${compactMoney(tot)}</text>`;
-  return `<svg class="wpie" viewBox="0 0 200 200" role="group" aria-label="Spending by category, as a ring. Select a slice for details.">${paths}${mid}</svg><div class="wleg">${sl.map(x=>`<button type="button" data-act="wsel" data-k="${esc(x.k)}" class="${wsel===x.k?'sel':''}"><i style="background:${x.col}"></i>${esc(x.c)} ${Math.round(x.v/tot*100)}%</button>`).join('')}</div>`+(st.unalloc>0?`<p class="meta" style="margin:6px 0 0">Not shown: ${fmt(st.unalloc)} still needs review.</p>`:'');
-}
-function wmPlan(st){
-  const B=planFor(curMonth).budgets||{};
-  const rows=S.cats.filter(c=>!isSav(groupOf(c))).map(c=>({c,v:st.spent[c]||0,lim:B[c]||0})).filter(x=>x.v>0||x.lim>0).sort((x,y)=>y.v-x.v);
-  if(!rows.length)return `<div class="empty">Nothing planned or spent yet.</div>`;
-  const mx=Math.max(...rows.map(x=>Math.max(x.v,x.lim)),1);
-  return `<div style="margin-top:6px">`+rows.map(x=>{const over=x.lim>0&&x.v>x.lim+OVER_SLACK,col=x.lim?(over?'var(--bad)':'var(--ok)'):'var(--neutral)';
-    return `<button type="button" class="vrow${wsel===x.c?' sel':''}" data-act="wsel" data-k="${esc(x.c)}" aria-pressed="${wsel===x.c}"><div class="vh"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}${x.lim?` <span class="meta">of ${fmt(x.lim)}</span>`:''}</span></div><div class="pvplan" role="img" aria-label="${esc(x.c)}: ${fmt(x.v)}${x.lim?' of '+fmt(x.lim)+(over?', over':', within plan'):', no plan set'}"><i style="width:${x.v/mx*100}%;background:${col}"></i>${x.lim?`<u style="left:calc(${x.lim/mx*100}% - 1px)"></u>`:''}</div></button>`}).join('')+`</div><div class="legend" style="margin-top:6px"><span><i style="background:var(--ok)"></i>Within plan</span><span><i style="background:var(--bad)"></i>Over plan</span><span><i style="background:var(--ink);width:2px"></i>Planned amount</span></div>`;
+  const mid=cur?`<text x="100" y="94" font-size="11">${esc(cur.c.length>14?cur.c.slice(0,13)+'…':cur.c)}</text><text x="100" y="112" font-size="15" font-weight="700">${compactMoney(cur.v)}</text><text x="100" y="126" font-size="10" style="fill:var(--muted)">${Math.round(cur.v/tot*100)}%</text>`:`<text x="100" y="98" font-size="11" style="fill:var(--muted)">${label||'Spent'}</text><text x="100" y="117" font-size="16" font-weight="700">${compactMoney(tot)}</text>`;
+  return `<svg class="wpie" viewBox="0 0 200 200" role="group" aria-label="Spending by category, as a ring. Select a slice for details.">${paths}${mid}</svg><div class="wleg">${sl.map(x=>`<button type="button" data-act="wsel" data-k="${esc(x.k)}" class="${wsel===x.k?'sel':''}"><i style="background:${x.col}"></i>${esc(x.c)} ${Math.round(x.v/tot*100)}%</button>`).join('')}</div>`+(st&&st.unalloc>0?`<p class="meta" style="margin:6px 0 0">Not shown: ${fmt(st.unalloc)} still needs review.</p>`:'');
 }
 function wmDays(){
   const D=daySpend(),W=340,H=150,pl=34,pb=18,pt=8,iw=W-pl-6,ih=H-pt-pb,mx=Math.max(...D.by.slice(1),1),bw=iw/D.dim;
@@ -1449,16 +1458,84 @@ function wmDetail(v,items,tot,st){
   const lim=(planFor(curMonth).budgets||{})[it.c]||0,l=catCharges(it.c);
   return `<div class="wd-h"><b>${esc(it.c)}</b><span class="mono">${fmt(it.v)}</span></div><div class="meta">${Math.round(it.v/tot*100)}% of categorized spending · ${l.length} charge${l.length===1?'':'s'}${lim?` · plan ${fmt(lim)} · ${it.v>lim?fmt(it.v-lim)+' over':fmt(lim-it.v)+' left'}`:''}</div>`+chg(l)+`<div class="actions" style="margin-top:6px"><button class="btn small" type="button" data-act="togcat" data-name="${esc(it.c)}">Open ${esc(it.c)}</button></div>`;
 }
+/* Themes: group spending by what it is, whatever category it was filed under. */
+const RE_AI=/OPENAI|CHATGPT|ANTHROPIC|CLAUDE|MIDJOURNEY|PERPLEXITY|COPILOT|GEMINI|CURSOR/i,RE_SUB=/NETFLIX|PRIME VIDEO|AMAZON PRIME|AMZN PRIME|PEACOCK|DISNEY|SPOTIFY|HULU|YOUTUBE|CANVA|HBO|PARAMOUNT|APPLE\.COM\/BILL|ICLOUD|DROPBOX/i;
+const RE_FOOD=/CHILI|FIVE GUYS|CHICK-FIL|MCDONALD|WENDY|BURGER|TACO|PIZZA|CAFE|GRILL|DINER|BBQ|SUBWAY|RESTAURANT|BAKERY|DONUT|WAFFLE|SUSHI|CHIPOTLE|PANERA|DOMINO|SONIC|STARBUCKS|DUNKIN|COFFEE|7\s?BREW|DUTCH BROS|KITCHEN|STEAKHOUSE|BISTRO|DOORDASH|GRUBHUB|UBER EATS/i;
+const RE_TRAVEL=/AIRLINE|AIRWAYS|DELTA AIR|SOUTHWEST|UNITED AIR|AMERICAN AIR|HOTEL|MARRIOTT|HILTON|HYATT|AIRBNB|VRBO|EXPEDIA|RESORT|HERTZ|AVIS|ENTERPRISE RENT/i;
+function themeOf(cat,desc){
+  const d=String(desc||''),c=String(cat||'');
+  if(isSav(groupOf(c)))return 'Savings';
+  if(RE_AI.test(d)||/chat ?gpt|openai|claude|\bAI\b/i.test(c))return 'AI & software';
+  if(RE_SUB.test(d)||/subscri|netflix|prime|peacock|disney|spotify|canva|hulu|storage/i.test(c))return 'Subscriptions';
+  if(RE_FOOD.test(d)||/groc|restaur|dining|coffee|food|date night/i.test(c))return 'Food & dining';
+  if(RE_TRAVEL.test(d)||/travel|vacation|trip/i.test(c))return 'Travel';
+  if(/mortgage|rent|water|electric|natural gas|trash|sewer|internet|cox|phone|cell|utilit|home|household/i.test(c))return 'Home & bills';
+  const g=groupOf(c);
+  if(/hous|util/i.test(g))return 'Home & bills';
+  if(/transp|car|auto|fuel/i.test(g)||/fuel|gas|car |tires/i.test(c))return 'Transportation';
+  if(/health|medic/i.test(g))return 'Health';
+  if(/giving|tithe|charit/i.test(g))return 'Giving';
+  if(/insur/i.test(g))return 'Insurance';
+  if(/life|person|fun|entertain/i.test(g))return 'Fun & personal';
+  return g&&g!=='Other'?g:'Other';
+}
+function wmEntries(){
+  const out=[];
+  S.txs.forEach(t=>{if(!t.date.startsWith(curMonth)||t.status==='transfer'||t.status==='credit'||t.status==='review')return;(t.allocations||[]).forEach(a=>{if(a.cents!==0)out.push({t,cat:a.cat,cents:a.cents,theme:themeOf(a.cat,t.desc)})})});
+  return out;
+}
+const PIE_MODES=[['now','As it is now'],['plan','As planned'],['theme','By theme']];
+function wmPieData(mode,st){
+  const toItems=m=>Object.entries(m).filter(x=>x[1]>0).map(([c,v])=>({c,v})).sort((a,b)=>b.v-a.v);
+  let items,label='Spent';
+  if(mode==='plan'){const B=planFor(curMonth).budgets||{};const m={};S.cats.forEach(c=>{if(B[c]>0)m[c]=B[c]});items=toItems(m);label='Planned'}
+  else if(mode==='theme'){const E=wmEntries(),m={};E.forEach(e=>{if(wdrill){if(e.theme===wdrill)m[e.cat]=(m[e.cat]||0)+e.cents}else m[e.theme]=(m[e.theme]||0)+e.cents});items=toItems(m);label=wdrill||'Spent'}
+  else{const m={};S.cats.forEach(c=>{if((st.spent[c]||0)>0)m[c]=st.spent[c]});items=toItems(m)}
+  return {items,tot:sum(items.map(x=>x.v)),label};
+}
+function wmPieDetail(mode,pd,st){
+  const {items,tot}=pd;
+  const hint={now:'Select a slice to see what is inside it.',plan:'Select a slice to compare it with what you have spent so far.',theme:wdrill?'Select a category to see its charges in this theme.':'Select a slice to see which categories and places make it up. Use Break this down to look inside.'}[mode];
+  if(!wsel||!items.length)return `<span class="meta">${hint}</span>`;
+  const rows=l=>l.slice(0,6).map(x=>`<div class="place"><span>${fd(x.t.date)} · ${esc(niceName(x.t.desc))}</span><span class="mono">${fmt(x.cents)}</span></div>`).join('');
+  if(wsel==='Other'){const m=items.slice(7);if(!m.length)return `<span class="meta">${hint}</span>`;const mt=sum(m.map(x=>x.v));return `<div class="wd-h"><b>Smaller slices</b><span class="mono">${fmt(mt)}</span></div><div class="meta">${Math.round(mt/tot*100)}% of the total</div>`+m.map(x=>`<div class="place"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}</span></div>`).join('')}
+  const it=items.find(x=>x.c===wsel);if(!it)return `<span class="meta">${hint}</span>`;
+  const pct=Math.round(it.v/tot*100);
+  if(mode==='plan'){
+    const sp=st.spent[it.c]||0,left=it.v-sp;
+    return `<div class="wd-h"><b>${esc(it.c)}</b><span class="mono">${fmt(it.v)} planned</span></div><div class="meta">${pct}% of everything you planned · ${fmt(sp)} spent so far · ${left>=0?fmt(left)+' left':fmt(-left)+' over'}</div><div class="actions" style="margin-top:6px"><button class="btn small" type="button" data-act="togcat" data-name="${esc(it.c)}">Open ${esc(it.c)}</button></div>`;
+  }
+  if(mode==='theme'&&!wdrill){
+    const E=wmEntries().filter(e=>e.theme===it.c),byCat={},byPlace={};
+    E.forEach(e=>{byCat[e.cat]=(byCat[e.cat]||0)+e.cents;const n=niceName(e.t.desc);byPlace[n]=(byPlace[n]||0)+e.cents});
+    const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]),places=Object.entries(byPlace).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    return `<div class="wd-h"><b>${esc(it.c)}</b><span class="mono">${fmt(it.v)}</span></div><div class="meta">${pct}% of the total · ${E.length} charge${E.length===1?'':'s'} across ${cats.length} categor${cats.length===1?'y':'ies'}</div><div class="sub" style="margin-top:8px">Filed under</div>`+cats.map(([c,v])=>`<div class="place"><span>${esc(c)}</span><span class="mono">${fmt(v)}</span></div>`).join('')+`<div class="sub">Top places</div>`+places.map(([n,v])=>`<div class="place"><span>${esc(n)}</span><span class="mono">${fmt(v)}</span></div>`).join('')+`<div class="actions" style="margin-top:6px"><button class="btn small primary" type="button" data-act="wdrill" data-k="${esc(it.c)}">Break this down</button></div>`;
+  }
+  const lim=mode==='now'?((planFor(curMonth).budgets||{})[it.c]||0):0;
+  const l=mode==='theme'?wmEntries().filter(e=>e.theme===wdrill&&e.cat===it.c).sort((a,b)=>b.cents-a.cents):catCharges(it.c);
+  return `<div class="wd-h"><b>${esc(it.c)}</b><span class="mono">${fmt(it.v)}</span></div><div class="meta">${pct}% of ${mode==='theme'?esc(wdrill):'the total'} · ${l.length} charge${l.length===1?'':'s'}${lim?` · plan ${fmt(lim)} · ${it.v>lim?fmt(it.v-lim)+' over':fmt(lim-it.v)+' left'}`:''}</div>`+rows(l)+`<div class="actions" style="margin-top:6px"><button class="btn small" type="button" data-act="togcat" data-name="${esc(it.c)}">Open ${esc(it.c)}</button></div>`;
+}
 function composeHTML(st){
   const items=S.cats.filter(c=>!isSav(groupOf(c))).map(c=>({c,v:st.spent[c]||0})).filter(x=>x.v>0).sort((a,b)=>b.v-a.v);
   const tot=sum(items.map(x=>x.v)),mx=Math.max(...items.map(x=>x.v),1);
   let h=`<h3>Where the money went</h3>`;
-  if(!items.length&&!st.unalloc)return h+`<div class="empty" style="margin-top:10px">No spending in ${monthLabel(curMonth)} yet.</div>`;
-  const v=['list','pie','plan','days'].includes(S.wview)?S.wview:'list';
+  if(!items.length&&!st.unalloc&&!(plannedSpend(curMonth)>0))return h+`<div class="empty" style="margin-top:10px">No spending in ${monthLabel(curMonth)} yet.</div>`;
+  const v=['list','pie','days'].includes(S.wview)?S.wview:'list';
   if(wsel&&v!=='days'&&/^d\d+$/.test(wsel))wsel=null;
-  h+=`<div class="vtabs" role="group" aria-label="Choose a view">${[['list','List'],['pie','Pie'],['plan','Vs plan'],['days','By day']].map(([k,n])=>`<button type="button" data-act="wview" data-v="${k}" aria-pressed="${v===k}">${n}</button>`).join('')}</div>`;
-  h+=v==='pie'&&items.length?wmPie(items,tot,st):v==='plan'?wmPlan(st):v==='days'?wmDays():wmList(items,tot,mx,st);
-  h+=`<div class="wdet" aria-live="polite">${wmDetail(v==='pie'&&!items.length?'list':v,items,tot,st)}</div>`;
+  h+=`<div class="vtabs" role="group" aria-label="Choose a view">${[['list','List'],['pie','Pie'],['days','By day']].map(([k,n])=>`<button type="button" data-act="wview" data-v="${k}" aria-pressed="${v===k}">${n}</button>`).join('')}</div>`;
+  let det;
+  if(v==='pie'){
+    const pm=PIE_MODES.some(x=>x[0]===S.pmode)?S.pmode:'now',pd=wmPieData(pm,st);
+    h+=`<div class="vtabs sub" role="group" aria-label="What the pie shows">${PIE_MODES.map(([k,n])=>`<button type="button" data-act="pmode" data-v="${k}" aria-pressed="${pm===k}">${n}</button>`).join('')}</div>`;
+    if(pm==='theme'&&wdrill)h+=`<div class="actions" style="margin:4px 0 0"><button class="btn small ghost" type="button" data-act="wdrill" data-k="">‹ All themes</button><span class="meta">Inside ${esc(wdrill)}</span></div>`;
+    h+=pd.items.length?wmPie(pd.items,pd.tot,pm==='now'?st:null,pd.label):`<div class="empty" style="margin-top:8px">${pm==='plan'?'Nothing is planned yet for '+monthLabel(curMonth)+'.':'Nothing here yet.'}</div>`;
+    h+=`<p class="meta" style="margin:4px 0 0">${pm==='theme'?'Spending grouped by what it is, wherever you filed it. Savings you set aside count too.':(pm==='plan'?'Your planned amounts, including savings.':'What you spent so far, including savings you set aside.')}</p>`;
+    det=wmPieDetail(pm,pd,st);
+  }else{
+    h+=v==='days'?wmDays():wmList(items,tot,mx,st);
+    det=wmDetail(v,items,tot,st);
+  }
+  h+=`<div class="wdet" aria-live="polite">${det}</div>`;
   const pl={};S.txs.filter(t=>t.date.startsWith(curMonth)&&t.cents>0&&t.status!=='transfer'&&t.status!=='credit'&&t.cents-savedPart(t)>0).forEach(t=>{const n=niceName(t.desc);(pl[n]=pl[n]||{n,c:0,v:0});pl[n].c++;pl[n].v+=t.cents-savedPart(t)});
   const top=Object.values(pl).sort((a,b)=>b.v-a.v).slice(0,5);
   if(top.length)h+=`<div class="sub">Top places</div>`+top.map(x=>`<div class="place"><span>${esc(x.n)} <span class="meta">${x.c} charge${x.c===1?'':'s'}</span></span><span class="mono">${fmt(x.v)}</span></div>`).join('');
@@ -1794,6 +1871,7 @@ function viewRules(){
 function viewMore(){
   const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,BAR_N),over=order.filter(k=>!inBar.includes(k));
   return `<div class="stack">${over.map(k=>`<section class="card"><h3>${TAB_LABELS[k]}</h3><p class="meta" style="margin:4px 0 10px">${TAB_DESC[k]}</p><a class="btn" href="#${k}">Open ${TAB_LABELS[k].toLowerCase()}</a></section>`).join('')}
+  <section class="card"><h3>How it works</h3><p class="meta" style="margin:4px 0 10px">A short tour of everything Itemwise can do. You can skip around or stop any time.</p><button class="btn" type="button" data-act="tour">Start the tour</button></section>
   ${stats(curMonth).n?`<section class="card"><h3>The Tally</h3><p class="meta" style="margin:4px 0 10px">The Tally: a quick look back at how ${monthLabel(curMonth)} went.</p><button class="btn" type="button" data-act="wrapopen" data-m="${curMonth}">Watch the ${monthShort(curMonth)} Tally</button></section>`:''}
   <section class="card"><h3>Customize tabs and categories</h3><p class="meta" style="margin:4px 0 10px">Choose which tabs show along the top and put them in your order. Rename, add or remove categories and boxes.</p><a class="btn" href="#tabs">Customize</a></section></div>`;
 }
@@ -2068,6 +2146,47 @@ function panelClose(){
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&document.getElementById('epanel')&&!wrapSt&&!sheetOpen){e.preventDefault();panelClose()}
 });
+/* ---------- Tour: a short walk through every feature, skippable and jumpable ---------- */
+const TOUR=[
+ {n:'Welcome',tab:'overview',t:'Welcome to Itemwise',b:`<p>Itemwise tracks where your money goes against a plan you set. This tour covers everything it can do, in about two minutes.</p><p><b>Already know a part?</b> Tap any topic below to jump to it, or Skip the tour. You can reopen it any time from <b>More › How it works</b>${window.ITEMWISE_CONFIG?' or the Settings gear':''}.</p>`},
+ {n:'Home',tab:'overview',t:'Home: where you stand',b:`<ul><li>The ring shows how much is left to spend this month.</li><li>Cards below show net worth, money available, income, spending, goals and more.</li><li>Tap <b>Customize</b> to choose which cards show, put them in order, or pick a ready-made set.</li><li>Tap any dot on the net worth line to see that day.</li></ul>`},
+ {n:'Budgets',tab:'budgets',t:'Budgets: give every dollar a job',b:`<ul><li>Add your paychecks under <b>income lines</b>, then give each category a planned amount. Tap an amount to change it.</li><li>When income minus plans is $0, every dollar has a job.</li><li>Each bar shows spent so far, a marker for an even pace, and about how much you can spend per day.</li><li>Use the month arrows at the top to look at any month.</li></ul>`},
+ {n:'Categories',tab:'budgets',t:'Tap a category for its popup',b:`<ul><li><b>Add a charge</b> by hand, for example cash you spent, right inside the category.</li><li><b>Remove</b> a charge from the list. Undo appears for a few seconds.</li><li><b>Save up what I don't spend</b> carries leftovers into next month.</li><li><b>Set a savings goal</b> with a target and a date.</li></ul>`},
+ {n:'Charts',tab:'budgets',t:'Charts you can explore',b:`<ul><li><b>Month so far:</b> hover, drag or tap the line to pin a day. You see what was spent up to that day and that day's charges.</li><li><b>Where the money went:</b> switch between List, Pie and By day. The Pie can show your plan, what you spent, or spending grouped by theme (all food together, all subscriptions, all AI, all savings) and lets you break a theme down. Tap a slice, bar or row for details.</li><li>Trends show each category over the last few months.</li></ul>`},
+ {n:'Add (+)',tab:'overview',spot:'#fab',pos:'top',t:'The + button adds anything, fast',b:`<p>The round <b>+</b> button, bottom right, is on every screen.</p><ul><li>Add a charge that isn't in your bank file yet.</li><li>Log income that arrived.</li><li>Jump to importing a bank file or a receipt.</li></ul>`},
+ {n:'Import',tab:'import',t:'Import: bring in your charges',b:`<p>Download a CSV of recent transactions from your bank's website and choose it here. Itemwise guesses the columns, you check them, and it adds only charges it hasn't seen, so importing the same file twice adds nothing.</p>${window.ITEMWISE_CONFIG?'<p>On the website you can also link your bank in Settings so charges arrive on their own.</p>':''}`},
+ {n:'Transactions',tab:'activity',t:'Transactions: find and fix',b:`<ul><li><b>Search</b> a store or an amount, or use the chips: Needs a look, This week, Money in, Splits, or any category.</li><li><b>All months</b> searches everything, not just this month.</li><li>Tap a <b>store name</b> to see every charge there, in every month.</li><li>Tap a charge to change its category or split it.</li></ul>`},
+ {n:'Review',tab:'activity',t:'Review: one card at a time',b:`<ul><li>Charges Itemwise can't file on its own show up one at a time. Tap a category and it moves on.</li><li>Guesses wait for a quick confirm.</li><li>Tick <b>Remember this store</b> and the next charge there files itself (these are your Rules).</li><li>Prefer a list? Choose <b>See all as a list</b>.</li></ul>`},
+ {n:'Splits',tab:'activity',t:'Split a receipt by item',b:`<ul><li>A Walmart or Target charge can be split across categories: groceries, household, fun.</li><li>Paste the receipt text${window.ITEMWISE_CONFIG?' or add a photo':''} and Itemwise lists the items. Tax is shared fairly across them.</li><li>The split must add up to the charge, and Itemwise tells you if it doesn't.</li></ul>`},
+ {n:'Money in',tab:'activity',t:'Money in: refunds, deposits and paychecks',b:`<ul><li>Log a paycheck against an income line when it arrives.</li><li>A refund or a Venmo or Zelle deposit can go back into a category, or count as <b>disposable income</b>.</li><li>Transfers between your own accounts are left out of spending.</li></ul>`},
+ {n:'Accounts',tab:'accounts',t:'Accounts: net worth',b:`<ul><li>Add bank, savings, investment and debt balances. Update them now and then.</li><li>For investments you can load a holdings file to see your biggest positions.</li><li>Each saved balance adds a point to the net worth line on Home.</li></ul>`},
+ {n:'The Tally',tab:'overview',spot:'#tally',t:'The Tally: your month in review',b:`<p>The purple banner near the top opens a short story of how the month went: spending, wins, biggest places and a few facts. A <b>New</b> tag shows near month end. Watch it any time from the banner, Budgets or More.</p>`},
+ {n:'More',tab:'more',t:'More: customize, rules and undo',b:`<ul><li><b>Customize tabs and categories:</b> choose the four tabs in the bar, rename, add or remove categories.</li><li><b>Rules:</b> what each store files under, in one place.</li><li>Almost every change shows <b>Undo</b> for a few seconds.</li></ul>`},
+ {n:'Backup',tab:'data',t:'Data: keep a backup',b:`<p>Tap <b>Copy backup</b> now and then and paste it into a note. <b>Restore</b> moves your budget to another device.${window.ITEMWISE_CONFIG?' On the website your budget also saves to your account, so phone and computer match, and Settings has Household sharing for a spouse.':' Your data stays in this browser.'}</p>`}
+];
+let tourI=0,tourSpot=null;
+function tourSteps(){return TOUR}
+function tourClose(){
+  const el=document.getElementById('tour');if(el)el.remove();
+  if(tourSpot){tourSpot.classList.remove('tourspot');tourSpot=null}
+  try{localStorage.setItem('itemwise.toured','1')}catch(e){}
+}
+function tourDraw(){
+  const st=tourSteps(),s=st[tourI],last=tourI===st.length-1;
+  let el=document.getElementById('tour');
+  if(!el){el=document.createElement('div');el.id='tour';el.setAttribute('role','dialog');el.setAttribute('aria-label','How it works');document.body.appendChild(el)}
+  el.className='tourbar'+(s.pos==='top'?' tpos':'');
+  if(tourSpot){tourSpot.classList.remove('tourspot');tourSpot=null}
+  if(s.tab&&location.hash!=='#'+s.tab)location.hash=s.tab;
+  if(s.spot){const sp=document.querySelector(s.spot);if(sp){sp.classList.add('tourspot');tourSpot=sp}}
+  el.innerHTML=`<div class="tk">Step ${tourI+1} of ${st.length}</div><h3>${s.t}</h3>${s.b}
+   <div class="trow"><button class="btn small ghost" type="button" data-act="tourskip">Skip tour</button><span class="sp"></span>${tourI?'<button class="btn small" type="button" data-act="tourback">Back</button>':''}<button class="btn small primary" type="button" data-act="tournext">${last?'Done':'Next'}</button></div>
+   <div class="tchips" role="group" aria-label="Jump to a topic">${st.map((x,i)=>`<button type="button" data-act="tourgo" data-i="${i}"${i===tourI?' aria-current="step"':''}>${x.n}</button>`).join('')}</div>`;
+  const cur=el.querySelector('[aria-current="step"]');if(cur&&cur.scrollIntoView)try{cur.scrollIntoView({block:'nearest',inline:'center'})}catch(e){}
+}
+function tourOpen(i){tourI=Math.max(0,Math.min(i||0,tourSteps().length-1));tourDraw()}
+window.itemwiseTour=tourOpen;
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('tour')&&!document.getElementById('epanel')&&!wrapSt&&!sheetOpen)tourClose()});
 /* ---------- Home hero, one-at-a-time review, quick add ---------- */
 let rvSkip=new Set(),rvAll=false,sheetOpen=false,sheetPrev=null;
 function goView(v){if(location.hash.slice(1)===v){view=v;closeEditor();render()}else location.hash='#'+v}
@@ -2253,6 +2372,11 @@ document.addEventListener('click',e=>{
     case 'open':openEditor(id);break;
     case 'wrapopen':wrapOpen(b.dataset.m||curMonth);break;
     case 'fab':sheetOpenF();break;
+    case 'tour':tourOpen(0);break;
+    case 'tournext':if(tourI>=tourSteps().length-1){tourClose();location.hash='overview'}else{tourI++;tourDraw()}break;
+    case 'tourback':if(tourI>0){tourI--;tourDraw()}break;
+    case 'tourgo':tourOpen(+b.dataset.i);break;
+    case 'tourskip':tourClose();break;
     case 'sheetclose':sheetClose();break;
     case 'sheetgo':{const to=b.dataset.to;sheetClose(true);
       if(to==='add'){addOpen=true;goView('activity');setTimeout(()=>{const d=$('#af-desc');if(d)d.focus()},60)}
@@ -2393,7 +2517,9 @@ document.addEventListener('click',e=>{
     case 'dashup':case 'dashdown':{const l=dashList().slice(),w=b.dataset.w,i=l.indexOf(w),j=a==='dashup'?i-1:i+1;if(i<0||j<0||j>=l.length)break;[l[i],l[j]]=[l[j],l[i]];S.dash={preset:'custom',list:l};commit();break}
     case 'tbl':showTbl=!showTbl;render();break;
     case 'afilter':actFilter=b.dataset.f;render();break;
-    case 'wview':S.wview=b.dataset.v;wsel=null;save();refreshWmw();break;
+    case 'wview':S.wview=b.dataset.v;wsel=null;wdrill=null;save();refreshWmw();break;
+    case 'pmode':S.pmode=b.dataset.v;wsel=null;wdrill=null;save();refreshWmw();break;
+    case 'wdrill':wdrill=b.dataset.k||null;wsel=null;refreshWmw();break;
     case 'wsel':{const k=b.dataset.k;wsel=wsel===k?null:k;refreshWmw();break}
     case 'catadd':{
       const c=b.dataset.name,dEl=$('#ca-date'),nEl=$('#ca-desc'),aEl=$('#ca-amt');if(!dEl||!nEl||!aEl)break;
@@ -2559,6 +2685,8 @@ function route(){
 }
 window.addEventListener('hashchange',route);
 route();
+/* First visit to the stand-alone app shows the tour once. On the website, sign-in decides when (once per account). */
+(function(){if(window.ITEMWISE_CONFIG)return;try{if(localStorage.getItem('itemwise.toured'))return;localStorage.setItem('itemwise.t0','1');localStorage.removeItem('itemwise.t0')}catch(e){return}setTimeout(()=>{if(!document.getElementById('tour')&&!localStorage.getItem('itemwise.toured'))tourOpen(0)},700)})();
 </script>
 
 <script id="sync">

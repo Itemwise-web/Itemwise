@@ -114,6 +114,8 @@
       try { localStorage.setItem(key, '1'); } catch (e) {}
       try { Promise.resolve(sb.auth.updateUser({ data: { welcomed: true } })).catch(() => {}); } catch (e) {}
     }
+    // The tour itself lives in the app, so it can cover every feature. The older sheet below is only a fallback.
+    if (typeof window.itemwiseTour === 'function') { window.itemwiseTour(0); return; }
     let i = 0;
     const sheet = document.createElement('div'); sheet.id = 'iw-walk'; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Welcome walkthrough');
     sheet.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:9999;background:#1a212b;color:#e8ecf1;border-top:1px solid #3a4452;padding:16px 18px calc(16px + env(safe-area-inset-bottom,0px));font-family:Inter,system-ui,sans-serif;box-shadow:0 -8px 24px rgba(0,0,0,.4)';
