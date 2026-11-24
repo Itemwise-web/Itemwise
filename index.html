@@ -319,6 +319,32 @@ table.prev td.r,table.prev th.r{text-align:right}
 .wov:focus{outline:none}
 .wov :focus-visible{outline:3px solid #fff;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.wslide>*,.wrow .tk i{animation:none}}
+
+/* Home, one-at-a-time Review, quick add */
+.hero{display:flex;gap:16px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.hring svg{display:block}
+.hring text.hbig{font-family:var(--font-display);font-size:22px;font-weight:600;fill:var(--ink)}
+.hring text.hsm{font-size:12px;fill:var(--muted)}
+.htxt{flex:1;min-width:170px;display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.hk{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.hamt{margin:0;font-family:var(--font-display);font-size:34px;font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.rvcard{border-width:2px;border-color:var(--accent)}
+.rvcount{margin:0 0 6px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.rvhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.rvq{margin:14px 0 8px;font-weight:600}
+.rvchips{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+.rvchip{min-height:48px;font-size:15px;font-weight:600;background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.rvfoot{margin-top:10px}
+.sechead{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px;font-family:var(--font-body);font-weight:600}
+.fab{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:25;width:56px;height:56px;border-radius:99px;border:0;background:var(--accent);color:var(--accent-ink);font-size:30px;line-height:1;box-shadow:0 6px 20px rgba(0,0,0,.28);cursor:pointer}
+@media (max-width:680px){.fab{bottom:calc(76px + env(safe-area-inset-bottom,0px))}}
+.sheetbg{position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center}
+.sheetp{width:100%;max-width:560px;background:var(--surface);color:var(--ink);border-radius:18px 18px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));animation:sup .25s ease both;max-height:90vh;overflow:auto}
+@keyframes sup{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
+.sheetp h3{font-size:16px;margin:0 0 10px}
+.sbtn{display:flex;flex-direction:column;align-items:flex-start;width:100%;gap:2px;text-align:left;padding:12px 14px;margin-bottom:8px;border:1px solid var(--line);border-radius:12px;background:var(--surface);min-height:56px}
+.sbtn:hover{border-color:var(--accent)}.sbtn b{font-weight:600}.sbtn span{font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.sheetp{animation:none}}
 </style>
 
 <div class="wrap">
@@ -333,6 +359,7 @@ table.prev td.r,table.prev th.r{text-align:right}
   <main id="view"></main>
 </div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<button id="fab" class="fab" type="button" data-act="fab" aria-label="Quick add: a charge, income or an import">+</button>
 
 <script id="logic">
 const sum=a=>a.reduce((x,y)=>x+y,0);
@@ -491,7 +518,7 @@ const p2pPending=()=>S.txs.filter(t=>moneyInOpen(t)&&isP2P(t.desc)).sort(byDate)
 function applyDeposit(id,rows){
   const t=S.txs.find(x=>x.id===id);if(!t||!(t.cents<0)||sum(rows.map(r=>r.cents))!==-t.cents)return;
   const m=t.date.slice(0,7);
-  if(rows.some(r=>r.cat===DISP)&&!(planFor(m).disp>0)){dispAsk={id,m,rows};dsplit=null;if(view!=='review'&&view!=='budgets')location.hash='review';render();{const i=$('#dispamt');if(i)i.focus()}toast('How much disposable income do you expect this month?');return}
+  if(rows.some(r=>r.cat===DISP)&&!(planFor(m).disp>0)){dispAsk={id,m,rows};dsplit=null;if(view!=='activity'&&view!=='budgets')location.hash='activity';render();{const i=$('#dispamt');if(i)i.focus()}toast('How much disposable income do you expect this month?');return}
   const snap=snapshot();dsplit=null;
   const cats=rows.filter(r=>r.cat!==DISP);
   if(!cats.length){t.extra=true;t.noInc=false}
@@ -638,7 +665,7 @@ function freshState(){
       {id:16,pattern:'WM SUPERCENTER',mode:'ask',cat:'Grocery'},{id:17,pattern:'SAMS CLUB',mode:'askall',cat:'Grocery',gas:true},
       {id:19,pattern:'MURPHY',mode:'cat',cat:'Fuel'}
     ],
-    rv:8,track:{},dismissed:[],learned:{},txs:[]};
+    rv:9,track:{},dismissed:[],learned:{},txs:[]};
   adoptPlan(St);presets(St);
   return St;
 }
@@ -658,7 +685,7 @@ function save(){saveLocal();if(typeof syncSoon==='function')syncSoon()}
 let S=load()||freshState();
 /* Earlier versions defaulted Costco and Kroger to Groceries and Target to Household. Bring saved data in line. */
 function migrate(){
-  const v=S.rv||1;if(v>=8)return;
+  const v=S.rv||1;if(v>=9)return;
   if(v<2){
     S.rules=S.rules.filter(r=>!((r.pattern==='COSTCO'||r.pattern==='KROGER')&&r.mode==='ask'));
     const tg=S.rules.find(r=>r.pattern==='TARGET'&&r.mode==='ask'&&r.cat==='Household Supplies');if(tg)tg.cat='Grocery';
@@ -686,7 +713,8 @@ function migrate(){
   S.dismissed=S.dismissed||[];
   if(v<8)presets(S);
   S.track=S.track||{};
-  S.rv=8;reeval();
+  if(v<9)delete S.tabs;
+  S.rv=9;reeval();
 }
 migrate();
 const today=new Date(),todayKey=today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0');
@@ -696,7 +724,7 @@ const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
 let renaming=null,expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
 let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null;
-let view='review',openId=null,draft=null,curMonth=null,imp=null,qText='',delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
+let view='activity',openId=null,draft=null,curMonth=null,imp=null,qText='',delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const find=id=>S.txs.find(t=>t.id===id);
@@ -1151,7 +1179,7 @@ function renderMonthbar(){
   $('#monthbar').innerHTML=`<button class="btn small" type="button" data-act="prev"${i>0?'':' disabled'} aria-label="Previous month">‹</button><span>${monthLabel(curMonth)}</span><button class="btn small" type="button" data-act="next"${(i>=0&&i<ms.length-1)?'':' disabled'} aria-label="Next month">›</button>`;
 }
 function renderStrip(){
-  if(STARTER&&!S.txs.length){const e=$('#strip');e.innerHTML='';e.style.display='none';return}
+  if((STARTER&&!S.txs.length)||view==='overview'||(view==='activity'&&reviewCount()>0)){const e=$('#strip');e.innerHTML='';e.style.display='none';return}
   $('#strip').style.display='';
   const st=stats(),budgeted=plannedSpend(curMonth);
   $('#strip').innerHTML=
@@ -1159,9 +1187,10 @@ function renderStrip(){
     <div class="cell"><span class="lbl">In budgets</span><b>${fmt(st.inBudgets)}</b><small>of ${fmt(budgeted)} budgeted</small></div>
     ${st.pending?`<a class="cell attn" href="#review" aria-label="Needs review: ${fmt(st.unalloc)}, ${st.pending} purchases. Open Review"><span class="lbl">Needs review</span><b>${fmt(st.unalloc)}</b><small>${st.pending} purchase${st.pending===1?'':'s'}</small></a>`:`<div class="cell"><span class="lbl">Needs review</span><b>${fmt(st.unalloc)}</b><small>All clear</small></div>`}`;
 }
-const TAB_LABELS={overview:'Overview',budgets:'Budgets',activity:'Activity',review:'Review',import:'Import',accounts:'Accounts',rules:'Rules',data:'Data'};
-const TAB_DESC={overview:'Your dashboards: net worth, money available and more.',budgets:'Plans, income, goals and spending by category.',activity:'Every charge, to fix or add by hand.',review:'Charges that need a decision.',import:'Bring in a bank file or receipts.',accounts:'Bank, savings, investment and debt balances.',rules:'Which stores file themselves, plus your category names.',data:'Back up, restore or delete your data.'};
-const DEFAULT_TABS=['overview','budgets','activity','review','import','accounts','rules','data'];
+const TAB_LABELS={overview:'Home',budgets:'Budgets',activity:'Transactions',import:'Import',accounts:'Accounts',rules:'Rules',data:'Data'};
+const BAR_N=4;
+const TAB_DESC={overview:'What is left to spend this month, plus your dashboards.',budgets:'Plans, income, goals and spending by category.',activity:'Every charge, with the ones that need a decision at the top.',import:'Bring in a bank file or receipts.',accounts:'Bank, savings, investment and debt balances.',rules:'Which stores file themselves.',data:'Back up, restore or delete your data.'};
+const DEFAULT_TABS=['overview','budgets','activity','accounts','import','rules','data'];
 function tabCfg(){
   const t=S.tabs||{},order=(Array.isArray(t.order)?t.order:[]).filter((k,i,a)=>TAB_LABELS[k]&&a.indexOf(k)===i);
   DEFAULT_TABS.forEach(k=>{if(!order.includes(k))order.push(k)});
@@ -1169,13 +1198,12 @@ function tabCfg(){
   if(order.every(k=>hidden.includes(k)))hidden.length=0;
   return {order,hidden};
 }
-/* The first five tabs you keep show in a phone's bottom bar; the rest wait under More. A computer shows every tab you keep, in your order. */
+/* The first four tabs you keep show in a phone's bottom bar; the rest wait under More. A computer shows every tab you keep, in your order. */
 function renderTabs(){
-  const n=lookCount(),{order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5),over=order.filter(k=>!inBar.includes(k));
-  let h=vis.map((k,i)=>`<a href="#${k}"${i>=5?' class="only-d"':''}${k===view?' aria-current="page"':''}>${TAB_LABELS[k]}${k==='review'&&n?`<span class="count">${n}</span>`:''}</a>`).join('');
+  const n=lookCount(),{order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,BAR_N),over=order.filter(k=>!inBar.includes(k));
+  let h=inBar.map(k=>`<a href="#${k}"${k===view?' aria-current="page"':''}>${TAB_LABELS[k]}${k==='activity'&&n?`<span class="count">${n}</span>`:''}</a>`).join('');
   const moreCur=view==='more'||view==='tabs'||over.includes(view);
-  h+=`<a href="#more"${hidden.length?'':' class="only-m"'}${moreCur?' aria-current="page"':''}>More</a>`;
-  if(!hidden.length)h+=`<a href="#tabs" class="only-d" aria-label="Customize tabs" title="Customize tabs" style="flex:none;padding-left:10px;padding-right:10px">✎</a>`;
+  h+=`<a href="#more"${moreCur?' aria-current="page"':''}>More</a>`;
   $('#tabs').innerHTML=h;
 }
 function render(){
@@ -1226,13 +1254,14 @@ function cardHTML(t){
   return `<article class="card"><div class="card-top"><div><h3 title="${esc(t.desc)}">${esc(niceName(t.desc))}</h3><p class="meta">${reviewReason(t)}</p><p class="raw" title="${esc(t.desc)}">${esc(t.desc)}</p></div><div class="amt${t.cents<0?' neg':''}">${fmt(t.cents)}</div></div>
    ${open?editorHTML(t):`<div class="actions"><label>Put it all in <select id="q-${t.id}">${catOpts(def)}</select></label><button class="btn" type="button" data-act="assign" data-id="${t.id}">Assign all</button>${(r&&r.gas&&t.cents>0&&S.cats.includes('Fuel')&&def!=='Fuel')?`<button class="btn" type="button" data-act="assigncat" data-id="${t.id}" data-cat="Gas">It was gas</button>`:''}<button class="btn small ghost" type="button" data-act="dismiss" data-id="${t.id}" title="Take this out of Itemwise. It stays out if you import the same file again.">Remove</button><span class="sp"></span>${t.cents>0?`<button class="btn primary" type="button" data-act="open" data-id="${t.id}">Split with a receipt</button>`:''}</div>${remember}`}</article>`;
 }
-function viewReview(){
+function viewReview(inline){
   const items=S.txs.filter(t=>t.status==='review').sort(byDate),st=stats();
   if(!S.txs.length)return `<div class="empty"><p style="margin:0 0 6px"><strong>No charges yet.</strong></p><p style="margin:0 0 4px">Download a CSV of your recent transactions from your bank's website, then import it here. The file is read in this browser.</p><div class="actions"><button class="btn primary" type="button" data-act="goto-import">Import a CSV</button><button class="btn" type="button" data-act="goto-add">Add one by hand</button><button class="btn" type="button" data-act="sample-data">Try with sample data</button></div></div>`;
   const guesses=S.txs.filter(t=>t.status==='guess').sort(byDate);
   const mixed=items.filter(t=>{const r=t.cents>0&&matchRule(t.desc,S.rules);return r&&r.mode==='ask'});
   const pin=p2pPending();
-  const lede=items.length
+  if(inline&&!items.length&&!guesses.length&&!pin.length)return '';
+  const lede=inline?'':items.length
     ?`<p class="lede"><strong>${items.length} purchase${items.length===1?'':'s'} need${items.length===1?'s':''} a decision.</strong> They count toward total spending but stay out of every budget until you split or assign them, so your category budgets are never understated.</p>`
     :(guesses.length||pin.length?'':`<p class="lede"><strong>Nothing is waiting.</strong> Every charge has a category. Import more transactions any time.</p>`);
   const gHTML=guesses.length?`<section class="card" style="margin-bottom:16px"><div class="card-top"><div><h3>Confirm ${guesses.length} guessed categor${guesses.length===1?'y':'ies'}</h3><p class="meta">Already filed and counted in your budgets. Change any that are wrong, then confirm. Confirming also teaches Itemwise, so these merchants file themselves next time.</p></div><button class="btn primary" type="button" data-act="confirmguess">Confirm all</button></div><div style="margin-top:8px">${guesses.map(t=>`<div class="grow"><span class="d">${fd(t.date)}</span><span class="who" title="${esc(t.desc)}">${esc(niceName(t.desc))}</span><span class="mono">${fmt(t.cents)}</span><select data-gcat="${t.id}" aria-label="Category for ${esc(t.desc)}">${catOpts(t.allocations[0].cat)}</select></div>`).join('')}</div></section>`:'';
@@ -1242,7 +1271,9 @@ function viewReview(){
     return `<div class="panel" style="margin:8px 0"><div class="meta">Split ${fmt(tot)} from ${esc(niceName(t.desc))}. Each part can go back to a category it paid back, or count as disposable income.</div>${rs.map((r,i)=>`<div class="incrow" style="flex-wrap:wrap;border-top:0"><select data-dsc="${i}" aria-label="Where part ${i+1} goes">${dOpts(r.cat)}</select><span>$<input type="number" min="0" step="0.01" data-dsa="${i}" value="${esc(r.amt)}" placeholder="0.00" style="width:100px" aria-label="Amount for part ${i+1}"> <button class="btn small ghost" type="button" data-act="dsrm" data-i="${i}" aria-label="Remove part ${i+1}">×</button></span></div>`).join('')}<div class="meta" style="margin:6px 0">${left===0?'Fully placed.':(left>0?fmt(left)+' left to place.':fmt(-left)+' too much.')}</div><div class="actions"><button class="btn small" type="button" data-act="dsadd">Add a part</button><button class="btn small" type="button" data-act="dsrest">Rest to disposable income</button><button class="btn small primary" type="button" data-act="dssave">Save split</button><button class="btn small ghost" type="button" data-act="dscancel">Cancel</button></div></div>`};
   const pinRow=t=>`<div class="incrow" style="flex-wrap:wrap"><span>${fd(t.date)} · ${esc(niceName(t.desc))} · <b>${fmt(-t.cents)}</b></span><span>${dsplit&&dsplit.id===t.id?'':`<select id="dq-${t.id}" aria-label="Where this money goes">${dOpts('')}</select> <button class="btn small primary" type="button" data-act="depassign" data-id="${t.id}">Assign all</button> <button class="btn small" type="button" data-act="depsplit" data-id="${t.id}">Split</button> <button class="btn small ghost" type="button" data-act="ignoredep" data-id="${t.id}">Not income</button>`}</span></div>${dsplit&&dsplit.id===t.id?splitHTML(t):''}`;
   const pHTML=pin.length?`<section class="card" style="margin-bottom:16px"><h3>Money in to sort (${pin.length})</h3><p class="meta" style="margin:4px 0 8px">Venmo, Cash App and Zelle can be a payback or a payment. Pick where the money goes. A category means it paid you back for something in that budget. <b>Disposable income</b> adds to your total income without needing to be assigned. Venmo often pays out many things at once, so use <b>Split</b> to divide one deposit.</p>${pin.map(pinRow).join('')}${dispAsk&&dispAsk.m?dispFormHTML(dispAsk.m,true):''}</section>`:'';
-  const cards=items.length?`<div class="stack">${items.map(cardHTML).join('')}</div>`:(guesses.length||pin.length?'':`<div class="empty">All caught up.</div>`);
+  if(items.length&&items.every(t=>rvSkip.has(t.id)))rvSkip=new Set();
+  const q=items.filter(t=>!rvSkip.has(t.id)).concat(items.filter(t=>rvSkip.has(t.id)));
+  const cards=items.length?((rvAll?`<div class="stack">${items.map(cardHTML).join('')}</div>`:rvCardHTML(q[0],items.length))+(items.length>1?`<div class="actions"><button class="btn small ghost" type="button" data-act="rvall">${rvAll?'Back to one at a time':'See all '+items.length+' as a list'}</button></div>`:'')):(guesses.length||pin.length?'':`<div class="empty">All caught up.</div>`);
   return lede+pHTML+gHTML+mHTML+cards;
 }
 
@@ -1536,11 +1567,14 @@ function addFormHTML(){
    <div class="actions" style="margin-top:6px"><button class="btn primary" type="button" data-act="addgo">Add charge</button></div></section>`;
 }
 function viewActivity(){
+  const empty=!S.txs.length,rv=empty?(addOpen?'':viewReview()):viewReview(true);
+  if(empty&&!addOpen)return rv;
   const mm=S.txs.filter(t=>t.date.startsWith(curMonth));
   const nReview=mm.filter(t=>t.status==='review'||t.status==='guess').length;
   const cats=S.cats.filter(c=>mm.some(t=>(t.allocations||[]).some(a=>a.cat===c)));
   const chip=(f,l)=>`<button class="fchip" type="button" data-act="afilter" data-f="${esc(f)}" aria-pressed="${actFilter===f}">${esc(l)}</button>`;
-  return addFormHTML()+`<div class="fchips" role="group" aria-label="Filter charges">${chip('all','All')}${nReview?chip('review','Needs a look ('+nReview+')'):''}${cats.map(c=>chip(c,c)).join('')}</div>
+  const af=addFormHTML();
+  return (addOpen?af:'')+(rv?`<h3 class="sechead">To review</h3>${rv}<h3 class="sechead">All charges</h3>`:'')+(addOpen?'':af)+`<div class="fchips" role="group" aria-label="Filter charges">${chip('all','All')}${nReview?chip('review','Needs a look ('+nReview+')'):''}${cats.map(c=>chip(c,c)).join('')}</div>
   <div class="actions" style="margin:0 0 12px"><input type="text" id="q" placeholder="Search this month" value="${esc(qText)}" aria-label="Search charges" style="min-width:220px"></div><section class="card" id="alist">${actList()}</section>`;
 }
 
@@ -1598,27 +1632,29 @@ function doImport(){
 function viewRules(){
   const rows=S.rules.map(r=>`<div class="rrow"><input type="text" data-rpat="${r.id}" value="${esc(r.pattern)}" aria-label="Text to match"><select data-rmode="${r.id}" aria-label="What to do"><option value="cat"${r.mode==='cat'?' selected':''}>File under</option><option value="ask"${r.mode==='ask'?' selected':''}>Ask me to split</option><option value="askall"${r.mode==='askall'?' selected':''}>Ask every time</option><option value="transfer"${r.mode==='transfer'?' selected':''}>Transfer</option></select>${r.mode==='transfer'?'<span class="meta">Not spending</span>':`<select data-rcat="${r.id}" aria-label="Category">${catOpts(r.cat)}</select>`}${r.mode==='transfer'?'':`<label class="meta" style="white-space:nowrap"><input type="checkbox" data-rgas="${r.id}"${r.gas?' checked':''}> Gas button</label>`}<button class="btn small ghost" type="button" data-act="rmrule" data-id="${r.id}">Remove</button></div>`).join('');
   const learned=Object.entries(S.learned);
-  const used=new Set([...S.txs.flatMap(t=>t.allocations.map(a=>a.cat)),...S.rules.map(r=>r.cat),...Object.values(S.learned)]);
   return `<p class="lede">Rules decide where each imported charge goes. The first time Itemwise sees a merchant it asks; after you choose, it remembers. A rule matches any charge whose description contains its text.</p>
    <section class="card" style="margin-bottom:16px"><h3>Merchant rules</h3>
     <div class="actions" style="margin:8px 0 12px"><label>Stores set to "Ask me to split" only ask for charges over $<input type="number" min="0" step="1" id="thr" value="${S.cfg.threshold/100}" style="width:80px;text-align:right"></label></div>${rows||'<p class="meta">No rules yet.</p>'}
     <div class="actions"><input type="text" id="newpat" placeholder="Text to match, like TRADER JOE" style="text-transform:uppercase;min-width:220px" aria-label="New rule text"><select id="newmode"><option value="cat">File under</option><option value="ask">Ask me to split</option><option value="askall">Ask every time</option><option value="transfer">Transfer</option></select><select id="newcat" aria-label="New rule category">${catOpts(S.cats[0])}</select><button class="btn" type="button" data-act="addrule">Add rule</button></div></section>
-   <section class="card" style="margin-bottom:16px"><h3>Categories</h3>${renaming?renBox(renaming.kind,renaming.name):''}${groupedCats().map(([g,cs])=>`<div class="sub">${esc(g)} <button type="button" class="btn small ghost" data-act="renstart" data-kind="group" data-name="${esc(g)}" aria-label="Rename ${esc(g)}">Rename</button></div><div class="learned" style="margin:6px 0">${cs.map(c=>`<span>${esc(c)}${c==='Other'?'':`<button type="button" data-act="renstart" data-kind="cat" data-name="${esc(c)}" aria-label="Rename ${esc(c)}">✎</button>`}${used.has(c)?'':`<button type="button" data-act="rmcat" data-name="${esc(c)}" aria-label="Remove ${esc(c)}">×</button>`}</span>`).join('')}</div>`).join('')}<div class="actions"><input type="text" id="newcatname" placeholder="New category" aria-label="New category name"><select id="newcatgroup" aria-label="Group">${(S.groups||[]).map(g=>`<option>${esc(g.name)}</option>`).join('')}</select><button class="btn" type="button" data-act="addcat">Add category</button></div><p class="meta" style="margin:8px 0 0">Tap Rename on a box, or ✎ on a category, to change its name everywhere. Categories in use can't be removed here. Amounts live in the Budgets tab.</section>
    <section class="card"><h3>Remembered items</h3><p class="meta" style="margin:4px 0 12px">Items you categorized on earlier receipts are pre-filled next time.</p>
     ${learned.length?`<div class="learned">${learned.map(([n,c])=>`<span>${esc(n)} → ${esc(c)}<button type="button" data-act="unlearn" data-name="${esc(n)}" aria-label="Forget ${esc(n)}">×</button></span>`).join('')}</div>`:'<p class="meta">Nothing remembered yet. Save a split with "Remember my category" checked.</p>'}</section>`;
 }
 
 function viewMore(){
-  const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5),over=order.filter(k=>!inBar.includes(k));
+  const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,BAR_N),over=order.filter(k=>!inBar.includes(k));
   return `<div class="stack">${over.map(k=>`<section class="card"><h3>${TAB_LABELS[k]}</h3><p class="meta" style="margin:4px 0 10px">${TAB_DESC[k]}</p><a class="btn" href="#${k}">Open ${TAB_LABELS[k].toLowerCase()}</a></section>`).join('')}
   ${stats(curMonth).n?`<section class="card"><h3>The Tally</h3><p class="meta" style="margin:4px 0 10px">The Tally: a quick look back at how ${monthLabel(curMonth)} went.</p><button class="btn" type="button" data-act="wrapopen" data-m="${curMonth}">Watch the ${monthShort(curMonth)} Tally</button></section>`:''}
-  <section class="card"><h3>Customize tabs</h3><p class="meta" style="margin:4px 0 10px">Choose which tabs show along the top and put them in your order.</p><a class="btn" href="#tabs">Customize tabs</a></section></div>`;
+  <section class="card"><h3>Customize tabs and categories</h3><p class="meta" style="margin:4px 0 10px">Choose which tabs show along the top and put them in your order. Rename, add or remove categories and boxes.</p><a class="btn" href="#tabs">Customize</a></section></div>`;
+}
+function catsCardHTML(){
+  const used=new Set([...S.txs.flatMap(t=>t.allocations.map(a=>a.cat)),...S.rules.map(r=>r.cat),...Object.values(S.learned)]);
+  return `<section class="card" style="margin-top:16px"><h3>Categories</h3>${renaming?renBox(renaming.kind,renaming.name):''}${groupedCats().map(([g,cs])=>`<div class="sub">${esc(g)} <button type="button" class="btn small ghost" data-act="renstart" data-kind="group" data-name="${esc(g)}" aria-label="Rename ${esc(g)}">Rename</button></div><div class="learned" style="margin:6px 0">${cs.map(c=>`<span>${esc(c)}${c==='Other'?'':`<button type="button" data-act="renstart" data-kind="cat" data-name="${esc(c)}" aria-label="Rename ${esc(c)}">✎</button>`}${used.has(c)?'':`<button type="button" data-act="rmcat" data-name="${esc(c)}" aria-label="Remove ${esc(c)}">×</button>`}</span>`).join('')}</div>`).join('')}<div class="actions"><input type="text" id="newcatname" placeholder="New category" aria-label="New category name"><select id="newcatgroup" aria-label="Group">${(S.groups||[]).map(g=>`<option>${esc(g.name)}</option>`).join('')}</select><button class="btn" type="button" data-act="addcat">Add category</button></div><p class="meta" style="margin:8px 0 0">Tap Rename on a box, or ✎ on a category, to change its name everywhere. Categories in use can't be removed here. Amounts live in the Budgets tab.</p></section>`;
 }
 function viewTabs(){
-  const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,5);
-  return `<p class="lede">Put your tabs in the order you like and hide the ones you do not use. On a phone the first five you keep fill the bottom bar, and the rest wait under More. On a computer, every tab you keep shows along the top.</p>
+  const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,BAR_N);
+  return `<p class="lede">Put your tabs in the order you like and hide the ones you do not use. Your categories are at the bottom. The first four you keep fill the bar, on a phone or a computer, and the rest wait under More.</p>
   <section class="card">${order.map((k,i)=>`<div class="incrow" style="flex-wrap:wrap"><span><b>${TAB_LABELS[k]}</b>${hidden.includes(k)?' <span class="pill">hidden</span>':(inBar.includes(k)?' <span class="meta">in the phone bar</span>':' <span class="meta">under More on a phone</span>')}<br><span class="meta">${TAB_DESC[k]}</span></span><span><button class="btn small ghost" type="button" data-act="tabup" data-k="${k}"${i?'':' disabled'} aria-label="Move ${TAB_LABELS[k]} earlier">▲</button> <button class="btn small ghost" type="button" data-act="tabdown" data-k="${k}"${i<order.length-1?'':' disabled'} aria-label="Move ${TAB_LABELS[k]} later">▼</button> <button class="btn small" type="button" data-act="tabtog" data-k="${k}">${hidden.includes(k)?'Show':'Hide'}</button></span></div>`).join('')}</section>
-  <div class="actions" style="margin-top:12px"><button class="btn small ghost" type="button" data-act="tabreset">Put tabs back the way they were</button></div>`;
+  <div class="actions" style="margin-top:12px"><button class="btn small ghost" type="button" data-act="tabreset">Put tabs back the way they were</button></div>${catsCardHTML()}`;
 }
 function viewData(){
   return `<p class="lede">${typeof syncOn==='function'&&syncOn()?'Your plan, charges and rules are saved to your own private space on this page and update on every device where you open it while signed in. A copy is also kept in each browser. Still keep a backup now and then.':'Sync is not connected right now, so your latest changes are only in this browser. Clearing site data erases them, so keep a backup.'}</p>
@@ -1850,10 +1886,79 @@ function viewOverview(){
   const presetBtns=Object.keys(PRESETS).map(k=>`<button class="btn small${cur===k?' primary':''}" type="button" data-act="dashpreset" data-p="${k}" aria-pressed="${cur===k}">${PRESET_NAMES[k]}</button>`).join('');
   const editor=dashEdit?`<section class="card" style="margin-bottom:12px"><h3>Customize your dashboard</h3><p class="meta" style="margin:4px 0 8px">Turn widgets on or off and move the ones you keep. Pick a ready-made set above to start over.</p>${list.map((id,i)=>`<div class="incrow"><span>${esc(WIDGETS[id].t)}<br><span class="meta">${esc(WIDGETS[id].d)}</span></span><span><button class="btn small ghost" type="button" data-act="dashup" data-w="${id}"${i?'':' disabled'} aria-label="Move ${esc(WIDGETS[id].t)} up">▲</button> <button class="btn small ghost" type="button" data-act="dashdown" data-w="${id}"${i<list.length-1?'':' disabled'} aria-label="Move ${esc(WIDGETS[id].t)} down">▼</button> <button class="btn small" type="button" data-act="dashtog" data-w="${id}">Hide</button></span></div>`).join('')}
     ${Object.keys(WIDGETS).filter(id=>!list.includes(id)).length?`<div class="meta" style="margin:10px 0 4px">Not shown</div>${Object.keys(WIDGETS).filter(id=>!list.includes(id)).map(id=>`<div class="incrow"><span>${esc(WIDGETS[id].t)}<br><span class="meta">${esc(WIDGETS[id].d)}</span></span><button class="btn small primary" type="button" data-act="dashtog" data-w="${id}">Show</button></div>`).join('')}`:''}</section>`:'';
-  return `<div class="actions" style="margin-bottom:12px">${presetBtns}<button class="btn small${dashEdit?' primary':' ghost'}" type="button" data-act="dashedit">${dashEdit?'Done':'Customize'}</button></div>${editor}${list.map(id=>WIDGETS[id].r()).join('')||'<p class="meta">No widgets shown. Use Customize to add some.</p>'}`;
+  return homeHero()+`<div class="actions" style="margin-bottom:12px">${presetBtns}<button class="btn small${dashEdit?' primary':' ghost'}" type="button" data-act="dashedit">${dashEdit?'Done':'Customize'}</button></div>${editor}${list.map(id=>WIDGETS[id].r()).join('')||'<p class="meta">No widgets shown. Use Customize to add some.</p>'}`;
 }
 
 /* ---------- events ---------- */
+/* ---------- Home hero, one-at-a-time review, quick add ---------- */
+let rvSkip=new Set(),rvAll=false,sheetOpen=false,sheetPrev=null;
+function goView(v){if(location.hash.slice(1)===v){view=v;closeEditor();render()}else location.hash='#'+v}
+function homeHero(){
+  const b=plannedSpend(curMonth);
+  if(!S.txs.length&&!(b>0)&&!(planFor(curMonth).income||[]).length)return '';
+  const st=stats(),left=b-st.total,isCur=curMonth===todayKey,n=lookCount();
+  const pct=b>0?Math.min(Math.max(st.total,0)/b,1):0,over=b>0&&left<-OVER_SLACK;
+  const col=over?'var(--bad)':(pct>=.85?'var(--warn)':'var(--ok)');
+  const R=52,C=2*Math.PI*R,big=Math.abs(left)>=1000000?compactMoney(left):'$'+Math.round(Math.abs(left)/100).toLocaleString('en-US');
+  const dim=daysIn(curMonth),daysLeft=isCur?Math.max(dim-today.getDate()+1,1):0;
+  const ring=b>0?`<svg viewBox="0 0 128 128" width="132" height="132" role="img" aria-label="${fmt(st.total)} spent of ${fmt(b)} planned, ${Math.round(pct*100)} percent"><circle cx="64" cy="64" r="${R}" fill="none" stroke="var(--line)" stroke-width="12"/><circle cx="64" cy="64" r="${R}" fill="none" stroke="${col}" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${(C*(1-pct)).toFixed(1)}" transform="rotate(-90 64 64)"/><text x="64" y="64" text-anchor="middle" class="hbig">${big}</text><text x="64" y="84" text-anchor="middle" class="hsm">${over?'over':'left'}</text></svg>`:'';
+  const body=b>0
+    ?`<p class="hk">${over?'Over plan':'Left to spend'} · ${esc(monthLabel(curMonth).split(' ')[0])}</p><p class="hamt">${fmt(Math.abs(left))}</p><p class="meta">${fmt(st.total)} spent of ${fmt(b)} planned</p>${isCur&&!over&&left>0?`<p class="meta">${daysLeft} day${daysLeft===1?'':'s'} left, about ${fmt(Math.round(left/daysLeft))} a day</p>`:''}`
+    :`<p class="hk">Left to spend</p><p class="hamt">Set your plan</p><p class="meta">Add what you plan to spend in each category and this shows what is left.</p><a class="btn small primary" href="#budgets">Open Budgets</a>`;
+  const act=n?`<a class="btn small" href="#activity">${n} to look at</a>`:(S.txs.length?'<span class="pill ok">All sorted</span>':'');
+  return `<section class="hero" aria-label="This month at a glance">${ring?`<div class="hring">${ring}</div>`:''}<div class="htxt">${body}${act}</div></section>`;
+}
+function rvSuggest(t){
+  const out=[],add=c=>{if(c&&S.cats.includes(c)&&!isSav(groupOf(c))&&!out.includes(c))out.push(c)};
+  const r=matchRule(t.desc,S.rules);if(r&&r.cat)add(r.cat);
+  if(t.cents>0)add(suggestCat(t.desc,S.cats));
+  const key=merchantKey(t.desc),cnt={},use={};
+  S.txs.forEach(x=>{
+    if(x.id===t.id||!(x.status==='done'||x.status==='auto')||!x.allocations)return;
+    x.allocations.forEach(a=>{use[a.cat]=(use[a.cat]||0)+1});
+    if(x.allocations.length===1&&merchantKey(x.desc)===key){const c=x.allocations[0].cat;cnt[c]=(cnt[c]||0)+1}
+  });
+  Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]).forEach(add);
+  Object.keys(use).sort((a,b)=>use[b]-use[a]).forEach(add);
+  if(!out.length)add(neutralCat());
+  return out.slice(0,3);
+}
+function rvCardHTML(t,n){
+  const r=matchRule(t.desc,S.rules),open=openId===t.id,def=(r&&r.cat&&S.cats.includes(r.cat))?r.cat:neutralCat();
+  const remember=(!r&&t.cents>0&&!isP2P(t.desc))?`<div class="remember"><label class="field"><input type="checkbox" id="rem-${t.id}" checked> Remember: always file charges containing</label><input type="text" id="pat-${t.id}" value="${esc(merchantKey(t.desc))}" aria-label="Text to remember"><span>under the category chosen</span></div>`:'';
+  const sug=rvSuggest(t),gas=(r&&r.gas&&t.cents>0&&S.cats.includes('Fuel')&&!sug.includes('Fuel'));
+  const chips=sug.map(c=>`<button class="btn rvchip" type="button" data-act="assigncat" data-id="${t.id}" data-cat="${esc(c)}">${esc(c)}</button>`).join('')+(gas?`<button class="btn rvchip" type="button" data-act="assigncat" data-id="${t.id}" data-cat="Gas">It was gas</button>`:'');
+  return `<article class="card rvcard" aria-label="Charge to sort"><p class="rvcount">${n} left to sort</p><div class="rvhead"><div><h3 title="${esc(t.desc)}">${esc(niceName(t.desc))}</h3><p class="meta">${reviewReason(t)}</p><p class="raw" title="${esc(t.desc)}">${esc(t.desc)}</p></div><div class="amt${t.cents<0?' neg':''}">${fmt(t.cents)}</div></div>
+   ${open?editorHTML(t):`<p class="rvq">Where did this go?</p><div class="rvchips">${chips}</div><div class="actions"><label>Another category <select id="q-${t.id}">${catOpts(def)}</select></label><button class="btn" type="button" data-act="assign" data-id="${t.id}">Assign</button></div>${remember}<div class="actions rvfoot">${t.cents>0?`<button class="btn small" type="button" data-act="open" data-id="${t.id}">Split with a receipt</button>`:''}${n>1?`<button class="btn small ghost" type="button" data-act="rvskip" data-id="${t.id}">Skip for now</button>`:''}<span class="sp"></span><button class="btn small ghost" type="button" data-act="dismiss" data-id="${t.id}" title="Take this out of Itemwise. It stays out if you import the same file again.">Remove</button></div>`}</article>`;
+}
+function sheetHTML(){
+  const incs=(planFor(curMonth).income||[]),n=lookCount();
+  const incBtns=incs.length?incs.slice(0,3).map((i,k)=>`<button class="sbtn" type="button" data-act="sheetgo" data-to="income" data-i="${k}"><b>Log ${esc(i.name)} received</b><span>Record a paycheck or deposit</span></button>`).join(''):`<button class="sbtn" type="button" data-act="sheetgo" data-to="setupinc"><b>Add your income</b><span>So the plan knows what there is to give a job</span></button>`;
+  return `<div class="sheetp" data-act="sheetnoop" role="dialog" aria-modal="true" aria-label="Quick add"><h3>Quick add</h3>
+   <button class="sbtn" type="button" data-act="sheetgo" data-to="add"><b>Add a charge</b><span>Cash, or anything not in your bank yet</span></button>
+   ${incBtns}
+   <button class="sbtn" type="button" data-act="sheetgo" data-to="import"><b>Import a bank file</b><span>Bring in a CSV from your bank</span></button>
+   ${n?`<button class="sbtn" type="button" data-act="sheetgo" data-to="review"><b>Sort ${n} charge${n===1?'':'s'}</b><span>Go to the ones waiting for a decision</span></button>`:''}
+   <button class="btn" type="button" data-act="sheetclose" style="width:100%;margin-top:2px">Close</button></div>`;
+}
+function sheetOpenF(){
+  if(sheetOpen||wrapSt)return;
+  sheetOpen=true;sheetPrev=document.activeElement;
+  const w=document.createElement('div');w.id='sheet';w.className='sheetbg';w.setAttribute('data-act','sheetclose');
+  w.innerHTML=sheetHTML();
+  document.body.appendChild(w);document.body.style.overflow='hidden';
+  const f=w.querySelector('.sbtn');if(f)f.focus({preventScroll:true});
+}
+function sheetClose(quiet){
+  if(!sheetOpen)return;
+  sheetOpen=false;const w=$('#sheet');if(w)w.remove();document.body.style.overflow='';
+  if(!quiet){try{if(sheetPrev&&document.contains(sheetPrev))sheetPrev.focus()}catch(e){}}
+}
+document.addEventListener('keydown',e=>{
+  if(!sheetOpen)return;
+  if(e.key==='Escape'){e.preventDefault();sheetClose()}
+  else if(e.key==='Tab'){const f=[...document.querySelectorAll('#sheet button')];if(f.length){const a=document.activeElement,i=f.indexOf(a);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&(i<0||i===f.length-1)){e.preventDefault();f[0].focus()}}}
+});
 /* ---------- Month wrapped: a story-style look back at one month ---------- */
 let wrapSt=null,wrapPrevFocus=null,wrapMem=[],wSwipeT=0,wX=null;
 const WSEEN='iw-wrap-seen';
@@ -1969,6 +2074,17 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'open':openEditor(id);break;
     case 'wrapopen':wrapOpen(b.dataset.m||curMonth);break;
+    case 'fab':sheetOpenF();break;
+    case 'sheetclose':sheetClose();break;
+    case 'sheetgo':{const to=b.dataset.to;sheetClose(true);
+      if(to==='add'){addOpen=true;goView('activity');setTimeout(()=>{const d=$('#af-desc');if(d)d.focus()},60)}
+      else if(to==='income'){showInc=true;logInc=+b.dataset.i;editInc=null;goView('budgets');setTimeout(()=>{const i=$('#recamt');if(i){i.focus();i.select()}},60)}
+      else if(to==='setupinc'){showInc=true;goView('budgets')}
+      else if(to==='import')goView('import');
+      else goView('activity');
+      break}
+    case 'rvskip':rvSkip.add(id);render();break;
+    case 'rvall':rvAll=!rvAll;render();break;
     case 'wrapskip':wrapMark(b.dataset.m);render();break;
     case 'wrapclose':wrapClose();break;
     case 'wrapnext':if(Date.now()-wSwipeT>400)wrapGo(1);break;
@@ -2071,7 +2187,7 @@ document.addEventListener('click',e=>{
       if(bad||!rows.length){toast('Give every part a destination and an amount above $0.');break}
       const tot=sum(rows.map(r=>r.cents));if(tot!==-t.cents){toast(tot<-t.cents?fmt(-t.cents-tot)+' is still left to place.':'The parts add up to '+fmt(tot-(-t.cents))+' too much.');break}
       applyDeposit(t.id,rows);break}
-    case 'extrainc':{const t=S.txs.find(x=>x.id===+b.dataset.id);if(!t||!(t.cents<0))break;const m=t.date.slice(0,7);if(!(planFor(m).disp>0)){dispAsk={id:t.id,m};if(view!=='review'&&view!=='budgets')location.hash='review';render();{const i=$('#dispamt');if(i){i.focus()}}toast('How much disposable income do you expect this month?');break}
+    case 'extrainc':{const t=S.txs.find(x=>x.id===+b.dataset.id);if(!t||!(t.cents<0))break;const m=t.date.slice(0,7);if(!(planFor(m).disp>0)){dispAsk={id:t.id,m};if(view!=='activity'&&view!=='budgets')location.hash='activity';render();{const i=$('#dispamt');if(i){i.focus()}}toast('How much disposable income do you expect this month?');break}
       applyDeposit(t.id,[{cat:DISP,cents:-t.cents}]);break}
     case 'unextra':{const t=S.txs.find(x=>x.id===+b.dataset.id);if(!t)break;const snap=snapshot();t.extra=false;commit();toast('Moved back to money in.',snap);break}
     case 'addacct':{const nm=($('#an-name').value||'').trim().slice(0,40);if(!nm){toast('Give the account a name.');break}
@@ -2205,8 +2321,8 @@ document.addEventListener('change',e=>{
   if(d.rcat){const r=S.rules.find(x=>x.id===+d.rcat);if(r)r.cat=el.value;reeval();commit();return}
 });
 function route(){
-  const h=location.hash.slice(1);
-  view=VIEWS.some(v=>v[0]===h)?h:((S.txs.length||(S.accts&&S.accts.length))?'overview':'review');
+  let h=location.hash.slice(1);if(h==='review')h='activity';
+  view=VIEWS.some(v=>v[0]===h)?h:((S.txs.length||(S.accts&&S.accts.length))?'overview':'activity');
   closeEditor();delId=null;wipe=false;render();
   if(pend){
     const p=pend;pend=null;const t=find(p.id);
