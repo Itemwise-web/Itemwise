@@ -424,6 +424,8 @@ button.crow:hover,button.crow.sel{background:var(--accent-soft)}
 @keyframes tpulse{50%{outline-color:transparent}}
 @media (prefers-reduced-motion:reduce){.tourspot{animation:none}}
 .vtabs.sub{margin:2px 0 6px}.vtabs.sub button{font-size:12.5px;padding:3px 10px}
+.yrrow .addgrid{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}.yrchips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0}.yrchips button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;padding:3px 10px;font-size:12.5px;cursor:pointer}.yrnote{background:var(--accent-soft);border-radius:10px;padding:10px 12px;margin:0 0 12px;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.sgoal{padding:12px 0;border-top:1px solid var(--line)}.sgoal:first-of-type{border-top:0}.sgoal .ghead2{margin-bottom:4px}.sgoal .meta{margin:4px 0 0}.glpre{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 8px}.glpre button{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:99px;padding:3px 10px;font-size:12.5px;cursor:pointer}.glsum{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:0 0 10px}.gladds .incrow{font-size:13.5px}
 </style>
 
 <div class="wrap">
@@ -801,7 +803,7 @@ const daysIn=m=>new Date(+m.slice(0,4),+m.slice(5,7),0).getDate();
 const monthShort=m=>new Date(m+'-01T12:00:00Z').toLocaleDateString('en-US',{month:'short',timeZone:'UTC'});
 const todayISO=todayKey+'-'+String(today.getDate()).padStart(2,'0');
 let addOpen=false,addF={date:todayISO,desc:'',amt:'',type:'out',cat:''};
-let renaming=null,expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
+let renaming=null,expandedG=new Set(),collapsedG=new Set(),bankDel=null,editAcct=null,holdOpen=null,dashEdit=false,goalEdit=null,yearOpen=false,yearY=0,goalPanel=null,editInc=null,logInc=null,dispAsk=null,dispEdit=false,dsplit=null,arrange=false,delAsk=null,showInc=false,colG=new Set(),openCats=new Set();
 let editB=null,showEmpty=false,showTbl=false,actFilter='all',menuId=null,lcData=null,lcPin=null,wsel=null,wdrill=null;
 let view='activity',openId=null,draft=null,curMonth=null,imp=null,qText='',actAll=false,panelExtra=null,delId=null,wipe=false,backupText='',toastTimer=null,uid=0;
 const $=s=>document.querySelector(s);
@@ -1288,7 +1290,7 @@ function renderTabs(){
 function render(){
   ensureMonth();renderNotice();renderMonthbar();renderTally();renderStrip();renderTabs();
   const fn={tabs:viewTabs,overview:viewOverview,accounts:viewAccounts,review:viewReview,budgets:viewBudgets,activity:viewActivity,import:viewImport,rules:viewRules,data:viewData,more:viewMore}[view]||viewReview;
-  panelExtra=null;
+  panelExtra=null;if(view!=='budgets'){yearOpen=false;goalPanel=null}
   $('#view').innerHTML=fn();
   renderPanel();
 }
@@ -1413,7 +1415,7 @@ function catCharges(c){
 function wmSlices(items){
   const top=items.slice(0,7),rest=items.slice(7);
   const out=top.map((x,i)=>({k:x.c,c:x.c,v:x.v,col:WPAL[i]}));
-  if(rest.length)out.push({k:'Other',c:'Other',v:sum(rest.map(x=>x.v)),col:WPAL[7],members:rest});
+  if(rest.length)out.push({k:'__more',c:'Everything else',v:sum(rest.map(x=>x.v)),col:WPAL[7],members:rest});
   return out;
 }
 function wmList(items,tot,mx,st){
@@ -1453,7 +1455,7 @@ function wmDetail(v,items,tot,st){
     const day=D.items[d],B=plannedSpend(curMonth);
     return `<div class="wd-h"><b>${monthLabel(curMonth).replace(/ \d+$/,'')} ${d}</b><span class="mono">${fmt(D.by[d])} that day</span></div><div class="meta">${fmt(D.cum[d])} spent through this day${B>0?` · ${D.cum[d]>B?fmt(D.cum[d]-B)+' over the plan':fmt(B-D.cum[d])+' of the plan left'}`:''}</div>`+(day.length?chg(day)+(day.length>6?`<div class="meta">and ${day.length-6} more</div>`:''):`<div class="meta" style="margin-top:4px">No charges on this day.</div>`);
   }
-  if(wsel==='Other'){const m=items.slice(7);if(!m.length)return `<span class="meta">${hint}</span>`;return `<div class="wd-h"><b>Smaller categories</b><span class="mono">${fmt(sum(m.map(x=>x.v)))}</span></div><div class="meta">${Math.round(sum(m.map(x=>x.v))/tot*100)}% of categorized spending</div>`+m.map(x=>`<div class="place"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}</span></div>`).join('')}
+  if(wsel==='__more'){const m=items.slice(7);if(!m.length)return `<span class="meta">${hint}</span>`;return `<div class="wd-h"><b>Smaller categories</b><span class="mono">${fmt(sum(m.map(x=>x.v)))}</span></div><div class="meta">${Math.round(sum(m.map(x=>x.v))/tot*100)}% of categorized spending</div>`+m.map(x=>`<div class="place"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}</span></div>`).join('')}
   const it=items.find(x=>x.c===wsel);if(!it)return `<span class="meta">${hint}</span>`;
   const lim=(planFor(curMonth).budgets||{})[it.c]||0,l=catCharges(it.c);
   return `<div class="wd-h"><b>${esc(it.c)}</b><span class="mono">${fmt(it.v)}</span></div><div class="meta">${Math.round(it.v/tot*100)}% of categorized spending · ${l.length} charge${l.length===1?'':'s'}${lim?` · plan ${fmt(lim)} · ${it.v>lim?fmt(it.v-lim)+' over':fmt(lim-it.v)+' left'}`:''}</div>`+chg(l)+`<div class="actions" style="margin-top:6px"><button class="btn small" type="button" data-act="togcat" data-name="${esc(it.c)}">Open ${esc(it.c)}</button></div>`;
@@ -1498,7 +1500,7 @@ function wmPieDetail(mode,pd,st){
   const hint={now:'Select a slice to see what is inside it.',plan:'Select a slice to compare it with what you have spent so far.',theme:wdrill?'Select a category to see its charges in this theme.':'Select a slice to see which categories and places make it up. Use Break this down to look inside.'}[mode];
   if(!wsel||!items.length)return `<span class="meta">${hint}</span>`;
   const rows=l=>l.slice(0,6).map(x=>`<div class="place"><span>${fd(x.t.date)} · ${esc(niceName(x.t.desc))}</span><span class="mono">${fmt(x.cents)}</span></div>`).join('');
-  if(wsel==='Other'){const m=items.slice(7);if(!m.length)return `<span class="meta">${hint}</span>`;const mt=sum(m.map(x=>x.v));return `<div class="wd-h"><b>Smaller slices</b><span class="mono">${fmt(mt)}</span></div><div class="meta">${Math.round(mt/tot*100)}% of the total</div>`+m.map(x=>`<div class="place"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}</span></div>`).join('')}
+  if(wsel==='__more'){const m=items.slice(7);if(!m.length)return `<span class="meta">${hint}</span>`;const mt=sum(m.map(x=>x.v));return `<div class="wd-h"><b>Smaller slices</b><span class="mono">${fmt(mt)}</span></div><div class="meta">${Math.round(mt/tot*100)}% of the total</div>`+m.map(x=>`<div class="place"><span>${esc(x.c)}</span><span class="mono">${fmt(x.v)}</span></div>`).join('')}
   const it=items.find(x=>x.c===wsel);if(!it)return `<span class="meta">${hint}</span>`;
   const pct=Math.round(it.v/tot*100);
   if(mode==='plan'){
@@ -1575,7 +1577,7 @@ function goalsCard(){
       else pace='The deadline has passed.';
       if(g.moreMonths)pace+=` At ${fmt(g.plan)} a month that is about ${g.moreMonths} more month${g.moreMonths===1?'':'s'}.`;
     }
-    return `<div class="gblock"><div class="ghead2"><b>${esc(c)}</b><span class="mono">${fmt(g.saved)} of ${fmt(g.target)}</span></div>${bar(g.pct,`${c}: ${fmt(g.saved)} of ${fmt(g.target)}`)}<p class="meta" style="margin:6px 0 0">${line1} ${mline} ${pace}</p>${goalEdit===c?goalFormHTML(c,(S.track||{})[c]||{}):`<div class="actions" style="margin-top:8px"><button class="btn small" type="button" data-act="goaledit" data-name="${esc(c)}">Edit goal</button><button class="btn small ghost" type="button" data-act="goalrm" data-name="${esc(c)}">Remove goal</button></div>`}</div>`;
+    return `<div class="gblock"><div class="ghead2"><b>${esc(c)}</b><span class="mono">${fmt(g.saved)} of ${fmt(g.target)}</span></div>${bar(g.pct,`${c}: ${fmt(g.saved)} of ${fmt(g.target)}`)}<p class="meta" style="margin:6px 0 0">${line1} ${mline} ${pace}</p>${(goalEdit===c&&!openCats.has(c))?goalFormHTML(c,(S.track||{})[c]||{}):`<div class="actions" style="margin-top:8px"><button class="btn small" type="button" data-act="goaledit" data-name="${esc(c)}">Edit goal</button><button class="btn small ghost" type="button" data-act="goalrm" data-name="${esc(c)}">Remove goal</button></div>`}</div>`;
   }).join('');
   let totalAvail=0;
   const fHTML=funds.map(c=>{
@@ -1588,7 +1590,8 @@ function goalsCard(){
   }).join('');
   const tot=funds.length>1?`<div class="ghead2 gblock"><b>All saved-up money</b><span class="mono big">${fmt(totalAvail)} available</span></div>`:'';
   const hint=(!goals.length&&!funds.length)?`<p class="meta" style="margin:4px 0 0">Tap a category's name below to set a savings goal for it, or to let what you don't spend carry into next month.</p>`:'';
-  return `<section class="card" style="margin-bottom:16px"><h3>Goals and saved-up money</h3>${gHTML}${fHTML}${tot}${hint}</section>`;
+  const Yp=defYear(),mo=+todayKey.slice(5),note=((mo>=11||mo<=2)&&S.yearDone!==Yp)?`<div class="yrnote"><span><b>Start of year?</b> Set your ${Yp} savings goals from what your past months show.</span><span><button class="btn small primary" type="button" data-act="yearopen">Plan ${Yp} goals</button> <button class="btn small ghost" type="button" data-act="yearskip">Not now</button></span></div>`:'';
+  return `<section class="card" style="margin-bottom:16px"><div class="card-top"><h3>Goals and saved-up money</h3><button class="btn small" type="button" data-act="yearopen">Plan the year</button></div>${note}${gHTML}${fHTML}${tot}${hint}</section>`;
 }
 function viewBudgets(){
   const st=stats(),plan=planFor(curMonth),B=plan.budgets,budgeted=plannedSpend(curMonth),isCur=curMonth===todayKey;
@@ -1614,7 +1617,7 @@ function viewBudgets(){
   const nameBtn=c=>`<button class="catbtn" type="button" data-act="togcat" data-name="${esc(c)}" aria-expanded="${openCats.has(c)}" title="Show what is in ${esc(c)}"><span class="chev">${openCats.has(c)?'▾':'▸'}</span>${esc(c)}</button>`;
   const catListBody=c=>{
     const tr=(S.track||{})[c]||{};
-    const gf=(goalEdit===c&&!tr.goal)?goalFormHTML(c,tr)
+    const gf=(goalEdit===c)?goalFormHTML(c,tr)
       :`<div class="actions">${tr.goal?`<span class="meta">Goal: ${fmt(tr.goal.target)} by ${monthLabel(tr.goal.by)}</span><button class="btn small" type="button" data-act="goaledit" data-name="${esc(c)}">Edit goal</button><button class="btn small ghost" type="button" data-act="goalrm" data-name="${esc(c)}">Remove goal</button>`:`<button class="btn small" type="button" data-act="goaledit" data-name="${esc(c)}">Set a savings goal</button>`}</div>`;
     const cset=`<div class="cset"><label class="field"><input type="checkbox" data-roll="${esc(c)}"${tr.roll?' checked':''}> Save up what I don't spend (it carries into next month)</label>${tr.roll?rollBaseHTML(c,tr):''}${gf}</div>`;
     const dflt=todayISO.startsWith(curMonth)?todayISO:curMonth+'-01';
@@ -1631,6 +1634,8 @@ function viewBudgets(){
   };
   const catList=()=>'';
   if(openCats.size){const c0=[...openCats][0];if(S.cats.includes(c0))panelExtra={key:'cat'+c0,title:c0,html:catListBody(c0)+`<div class="actions"><button class="btn primary" type="button" data-act="panelclose">Done</button></div>`}}
+  if(goalPanel!==null){const gg=goalPanel==='new'?null:(S.goals||[]).find(x=>x.id===goalPanel);if(goalPanel==='new'||gg)panelExtra={key:'goal'+goalPanel,title:gg?gg.name:'New savings goal',html:glPanelHTML(gg)}}
+  if(yearOpen)panelExtra={key:'year'+(yearY||defYear()),title:'Plan '+(yearY||defYear())+' goals',html:yearHTML()};
   const crow=r=>{
     const {c,lim}=r;
     const ctl=editB===c?`$<input type="number" min="0" step="10" id="bedit" data-budget="${esc(c)}" value="${lim/100}" aria-label="${esc(c)} planned amount in dollars">`:`<button class="lim" type="button" data-act="editbudget" data-name="${esc(c)}" aria-label="Edit ${esc(c)} planned amount, now ${fmt(lim)}">${fmt(lim)}</button>`;
@@ -1711,7 +1716,7 @@ function viewBudgets(){
    <section class="card" id="wmw">${composeHTML(st)}</section></div>
    <div class="legend" style="margin:0 0 10px"><span>${sw('var(--ok)')}Within plan</span><span>${sw('var(--bad)')}Over</span><span>${sw('repeating-linear-gradient(135deg,var(--neutral) 0 3px,transparent 3px 6px)')}Waiting for review</span>${isCur?`<span>${sw('var(--ink)','width:2px;height:12px;opacity:.55;border-radius:1px')}Even pace for today</span>`:''}</div>`:hold;
   const arrBar=`<div class="actions" style="margin:0 0 10px"><button class="btn small${arrange?' primary':''}" type="button" data-act="arrange">${arrange?'Done editing':'Edit boxes and categories'}</button>${stats(curMonth).n?`<button class="btn small" type="button" data-act="wrapopen" data-m="${curMonth}">✨ ${monthShort(curMonth)} Tally</button>`:''}${arrange&&!S.txs.length?'<button class="btn small" type="button" data-act="starterreset">Use the newest starter categories</button>':''}${arrange?'<span class="meta">Use the arrows to reorder, the menu to move a category to another box.</span>':''}</div>`;
-  return `${setupCard}${planCard}${goalsCard()}${spendBlock}${arrBar}${STARTER&&!arrange?`<div class="actions" style="margin:0 0 8px"><button class="btn small ghost" type="button" data-act="gall" data-v="1">Open all</button><button class="btn small ghost" type="button" data-act="gall" data-v="0">Close all</button></div>`:''}${groupCards}
+  return `${setupCard}${planCard}${namedGoalsCard()}${goalsCard()}${spendBlock}${arrBar}${STARTER&&!arrange?`<div class="actions" style="margin:0 0 8px"><button class="btn small ghost" type="button" data-act="gall" data-v="1">Open all</button><button class="btn small ghost" type="button" data-act="gall" data-v="0">Close all</button></div>`:''}${groupCards}
    ${trendsHTML()}
    <section class="card"><h3>Check against your bank</h3>
     <p class="meta" style="margin:4px 0 10px">Compare these with the totals on your statement. They match when you have imported every transaction for the month.</p>
@@ -1871,6 +1876,7 @@ function viewRules(){
 function viewMore(){
   const {order,hidden}=tabCfg(),vis=order.filter(k=>!hidden.includes(k)),inBar=vis.slice(0,BAR_N),over=order.filter(k=>!inBar.includes(k));
   return `<div class="stack">${over.map(k=>`<section class="card"><h3>${TAB_LABELS[k]}</h3><p class="meta" style="margin:4px 0 10px">${TAB_DESC[k]}</p><a class="btn" href="#${k}">Open ${TAB_LABELS[k].toLowerCase()}</a></section>`).join('')}
+  <section class="card"><h3>Yearly goals</h3><p class="meta" style="margin:4px 0 10px">Set savings goals for the year, with suggestions based on your past months.</p><button class="btn" type="button" data-act="yearopen">Plan the year</button></section>
   <section class="card"><h3>How it works</h3><p class="meta" style="margin:4px 0 10px">A short tour of everything Itemwise can do. You can skip around or stop any time.</p><button class="btn" type="button" data-act="tour">Start the tour</button></section>
   ${stats(curMonth).n?`<section class="card"><h3>The Tally</h3><p class="meta" style="margin:4px 0 10px">The Tally: a quick look back at how ${monthLabel(curMonth)} went.</p><button class="btn" type="button" data-act="wrapopen" data-m="${curMonth}">Watch the ${monthShort(curMonth)} Tally</button></section>`:''}
   <section class="card"><h3>Customize tabs and categories</h3><p class="meta" style="margin:4px 0 10px">Choose which tabs show along the top and put them in your order. Rename, add or remove categories and boxes.</p><a class="btn" href="#tabs">Customize</a></section></div>`;
@@ -2105,9 +2111,10 @@ const WIDGETS={
     const st=stats(),list=S.cats.filter(c=>!isSav(groupOf(c))&&(st.spent[c]||0)>0).map(c=>[c,st.spent[c]]).sort((a,b)=>b[1]-a[1]).slice(0,6),mx=list.length?list[0][1]:1;
     if(!list.length)return wcard('Biggest categories',`<p class="meta" style="margin:6px 0 0">No spending filed yet for ${monthLabel(curMonth)}.</p>`);
     return wcard('Biggest categories',list.map(([c,v])=>`<div style="margin-top:8px"><div style="display:flex;justify-content:space-between"><span>${esc(c)}</span><span>${fmt(v)}</span></div>${bar(v/mx*100)}</div>`).join(''))}},
+  sgoals:{t:'Savings goals',d:'Your goals for a house, a car, a trip, with dates',r(){return namedGoalsCard(true)}},
   goals:{t:'Goals and saved-up money',d:'Your savings goals and funds that carry over',r(){return goalsCard()||wcard('Goals and saved-up money',`<p class="meta" style="margin:6px 0 0">No goals or saved-up funds yet. Set one from a category on the Budgets tab.</p>`)}}
 };
-const PRESETS={overview:['available','networth','income','spending','goals'],networth:['networth','nwchart','allocation','debts'],investor:['investments','allocation','holdings','nwchart','networth'],budget:['spending','income','topcats','goals','available'],everything:Object.keys(WIDGETS)};
+const PRESETS={overview:['available','networth','income','spending','sgoals','goals'],networth:['networth','nwchart','allocation','debts'],investor:['investments','allocation','holdings','nwchart','networth'],budget:['spending','income','topcats','sgoals','goals','available'],everything:Object.keys(WIDGETS)};
 const PRESET_NAMES={overview:'Overview',networth:'Net worth',investor:'Investor',budget:'Budget focus',everything:'Everything'};
 const dashList=()=>((S.dash&&Array.isArray(S.dash.list))?S.dash.list:PRESETS.overview).filter(id=>WIDGETS[id]);
 function viewOverview(){
@@ -2141,7 +2148,7 @@ function renderPanel(){
 }
 function panelClose(){
   if(openId!==null)closeEditor();
-  logInc=null;openCats=new Set();goalEdit=null;render();
+  logInc=null;openCats=new Set();goalEdit=null;yearOpen=false;goalPanel=null;render();
 }
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape'&&document.getElementById('epanel')&&!wrapSt&&!sheetOpen){e.preventDefault();panelClose()}
@@ -2152,6 +2159,8 @@ const TOUR=[
  {n:'Home',tab:'overview',t:'Home: where you stand',b:`<ul><li>The ring shows how much is left to spend this month.</li><li>Cards below show net worth, money available, income, spending, goals and more.</li><li>Tap <b>Customize</b> to choose which cards show, put them in order, or pick a ready-made set.</li><li>Tap any dot on the net worth line to see that day.</li></ul>`},
  {n:'Budgets',tab:'budgets',t:'Budgets: give every dollar a job',b:`<ul><li>Add your paychecks under <b>income lines</b>, then give each category a planned amount. Tap an amount to change it.</li><li>When income minus plans is $0, every dollar has a job.</li><li>Each bar shows spent so far, a marker for an even pace, and about how much you can spend per day.</li><li>Use the month arrows at the top to look at any month.</li></ul>`},
  {n:'Categories',tab:'budgets',t:'Tap a category for its popup',b:`<ul><li><b>Add a charge</b> by hand, for example cash you spent, right inside the category.</li><li><b>Remove</b> a charge from the list. Undo appears for a few seconds.</li><li><b>Save up what I don't spend</b> carries leftovers into next month.</li><li><b>Set a savings goal</b> with a target and a date.</li></ul>`},
+ {n:'Goals',tab:'budgets',t:'Save for something specific',b:`<ul><li>Tap <b>New goal</b> on Budgets for a house, a car, a trip or anything else. Give it an amount and a date.</li><li>Itemwise shows how much to put away each month and whether you are on track.</li><li>Add money by hand, or pick a savings category and everything you file there counts automatically.</li></ul>`},
+ {n:'Year goals',tab:'budgets',t:'Plan the year',b:`<ul><li>Tap <b>Plan the year</b> on Budgets (or More) to set savings goals for the whole year.</li><li>Itemwise looks at what you set aside in past months and suggests amounts: the same as last year, your pace plus 10%, or your plan times 12.</li><li>It shows what that means per month, and fills in your goals when you save.</li><li>In November to February it also offers this on its own.</li></ul>`},
  {n:'Charts',tab:'budgets',t:'Charts you can explore',b:`<ul><li><b>Month so far:</b> hover, drag or tap the line to pin a day. You see what was spent up to that day and that day's charges.</li><li><b>Where the money went:</b> switch between List, Pie and By day. The Pie can show your plan, what you spent, or spending grouped by theme (all food together, all subscriptions, all AI, all savings) and lets you break a theme down. Tap a slice, bar or row for details.</li><li>Trends show each category over the last few months.</li></ul>`},
  {n:'Add (+)',tab:'overview',spot:'#fab',pos:'top',t:'The + button adds anything, fast',b:`<p>The round <b>+</b> button, bottom right, is on every screen.</p><ul><li>Add a charge that isn't in your bank file yet.</li><li>Log income that arrived.</li><li>Jump to importing a bank file or a receipt.</li></ul>`},
  {n:'Import',tab:'import',t:'Import: bring in your charges',b:`<p>Download a CSV of recent transactions from your bank's website and choose it here. Itemwise guesses the columns, you check them, and it adds only charges it hasn't seen, so importing the same file twice adds nothing.</p>${window.ITEMWISE_CONFIG?'<p>On the website you can also link your bank in Settings so charges arrive on their own.</p>':''}`},
@@ -2187,6 +2196,96 @@ function tourDraw(){
 function tourOpen(i){tourI=Math.max(0,Math.min(i||0,tourSteps().length-1));tourDraw()}
 window.itemwiseTour=tourOpen;
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('tour')&&!document.getElementById('epanel')&&!wrapSt&&!sheetOpen)tourClose()});
+/* ---------- Plan the year: set savings goals from what past months show ---------- */
+const defYear=()=>{const y=+todayKey.slice(0,4),mo=+todayKey.slice(5);return mo>=10?y+1:y};
+function yearData(Y){
+  const lastM=(Y-1)+'-12',endM=lastM<=curMonth?lastM:curMonth,startM=ymAdd(endM,-11);
+  const months=monthsFrom(startM,endM).filter(m=>S.txs.some(t=>t.date.startsWith(m)&&t.status!=='transfer'));
+  const cats=S.cats.filter(c=>isSav(groupOf(c))),tot={};cats.forEach(c=>{tot[c]=0});
+  S.txs.forEach(t=>{const m=t.date.slice(0,7);if(!months.includes(m)||t.status==='transfer'||t.status==='credit'||t.status==='review')return;(t.allocations||[]).forEach(a=>{if(tot[a.cat]!==undefined)tot[a.cat]+=a.cents})});
+  return {months,cats,tot,n:months.length,startM:months[0],endM:months[months.length-1]};
+}
+function yearHTML(){
+  const Y=yearY||defYear(),D=yearData(Y),yrs=[+todayKey.slice(0,4),+todayKey.slice(0,4)+1];
+  const tabs=`<div class="vtabs" role="group" aria-label="Which year">${yrs.map(y=>`<button type="button" data-act="yeary" data-y="${y}" aria-pressed="${y===Y}">${y}</button>`).join('')}</div>`;
+  if(!D.cats.length)return tabs+`<p class="meta">You do not have a savings category yet. Add one under More › Customize, then come back.</p><div class="actions"><button class="btn" type="button" data-act="panelclose">Close</button></div>`;
+  const totAll=sum(D.cats.map(c=>D.tot[c]));
+  const intro=D.n?`<p class="meta" style="margin:0 0 10px">I looked at ${D.n} month${D.n===1?'':'s'} of your budget (${monthShort(D.startM)} ${D.startM.slice(0,4)} to ${monthShort(D.endM)} ${D.endM.slice(0,4)}). You set aside ${fmt(totAll)} in all, about ${fmt(Math.round(totAll/D.n))} a month. Pick a goal for each savings category, or leave one blank to skip it.</p>`:`<p class="meta" style="margin:0 0 10px">There are no past months to learn from yet, so the suggestions use your current plan. Pick a goal for each savings category, or leave one blank to skip it.</p>`;
+  const rows=D.cats.map((c,i)=>{
+    const tr=(S.track||{})[c]||{},g=tr.goal,plan=planFor(curMonth).budgets[c]||0,avg=D.n?D.tot[c]/D.n:0,base=avg||plan;
+    const opts=[];
+    if(D.n>=11&&D.tot[c]>0)opts.push(['Same as last 12 months',Math.round(D.tot[c]/100)*100]);
+    else if(D.n>0&&avg>0)opts.push([`Your pace for a year`,Math.round(avg*12/100)*100]);
+    if(base>0)opts.push(['Pace +10%',Math.round(base*12*1.1/5000)*5000]);
+    if(plan>0)opts.push(['Plan × 12',plan*12]);
+    const seen=new Set(),chips=opts.filter(o=>o[1]>0&&!seen.has(o[1])&&seen.add(o[1]));
+    const cur=g&&g.by===Y+'-12'?g.target:'';
+    return `<div class="gblock yrrow"><div class="ghead2"><b>${esc(c)}</b><span class="meta">${plan?'Plan now '+fmt(plan)+' a month':'No monthly plan yet'}</span></div>
+     <p class="meta" style="margin:0">${D.n?`Set aside ${fmt(D.tot[c])} in those months, about ${fmt(Math.round(avg))} a month.`:'No history yet.'}${g&&g.by!==Y+'-12'?` Your current goal is ${fmt(g.target)} by ${monthLabel(g.by)}, and saving this one replaces it.`:''}</p>
+     <div class="addgrid"><label>Goal for ${monthLabel(Y+'-12')}, in dollars<input type="number" min="0" step="50" id="y-${i}" data-yr="${i}" value="${cur?cur/100:''}" placeholder="0"></label></div>
+     ${chips.length?`<div class="yrchips" role="group" aria-label="Suggestions for ${esc(c)}">${chips.map(([l,v])=>`<button type="button" data-act="yearfill" data-i="${i}" data-v="${v}">${l}: ${fmt(v)}</button>`).join('')}</div>`:''}
+     <p class="meta" id="y-m-${i}" style="margin:0">${cur?'That is about '+fmt(Math.round(cur/12))+' a month.':''}</p></div>`;
+  }).join('');
+  return tabs+intro+rows+`<div class="actions"><button class="btn primary" type="button" data-act="yearsave">Save my goals</button><button class="btn" type="button" data-act="panelclose">Cancel</button></div>`;
+}
+document.addEventListener('input',e=>{
+  const i=e.target&&e.target.dataset&&e.target.dataset.yr;if(i===undefined)return;
+  const v=parseMoney(e.target.value),m=document.getElementById('y-m-'+i);
+  if(m)m.textContent=v>0?'That is about '+fmt(Math.round(v/12))+' a month.':'';
+});
+/* ---------- Savings goals for specific things: a house, a car, a trip, by a date ---------- */
+const fdl=d=>new Date(d+'T12:00:00Z').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'UTC'});
+const goalDays=by=>Math.ceil((new Date(by+'T12:00:00Z')-new Date(todayISO+'T12:00:00Z'))/864e5);
+const GL_IDEAS=['House down payment','Car','Trip','Rainy-day fund','Wedding','New baby','Home project'];
+function goalCalc(g){
+  const cut=new Date(new Date(todayISO+'T12:00:00Z').getTime()-90*864e5).toISOString().slice(0,10);
+  let saved=g.base||0,recent=0,fromCat=0;
+  (g.adds||[]).forEach(a=>{saved+=a.cents;if(a.date>=cut)recent+=a.cents});
+  if(g.cat)S.txs.forEach(t=>{if(t.date<(g.from||'0000-00-00')||t.status==='transfer'||t.status==='credit'||t.status==='review')return;(t.allocations||[]).forEach(a=>{if(a.cat===g.cat){fromCat+=a.cents;if(t.date>=cut)recent+=a.cents}})});
+  saved+=fromCat;
+  const left=Math.max(g.target-saved,0),days=goalDays(g.by),monthsLeft=days>0?Math.max(1,Math.ceil(days/30.44)):0;
+  const need=left&&monthsLeft?Math.ceil(left/monthsLeft):0,pace=Math.round(recent/3);
+  const status=left===0?'done':(days<=0?'late':(pace<=0?'start':(pace>=need*0.9?'on':'behind')));
+  const proj=(left>0&&pace>0)?ymAdd(todayKey,Math.ceil(left/pace)):null;
+  return {saved,left,days,monthsLeft,need,pace,status,proj,fromCat,pct:g.target>0?Math.min(saved/g.target,1)*100:0};
+}
+function glStatusText(g,c){
+  const when=c.days>0?`${fdl(g.by)} · ${c.days} day${c.days===1?'':'s'} left`:`${fdl(g.by)} · date has passed`;
+  let t=`Due ${when}.`;
+  if(c.status==='done')return `Reached. ${t}`;
+  t+=` Save about ${fmt(c.need)} a month to get there.`;
+  if(c.status==='on')t+=` You have been saving about ${fmt(c.pace)} a month, so you are on track.`;
+  else if(c.status==='behind')t+=` You have been saving about ${fmt(c.pace)} a month${c.proj?`, which reaches it around ${monthLabel(c.proj)}`:''}.`;
+  else if(c.status==='start')t+=` Nothing added in the last 3 months yet.`;
+  else if(c.status==='late')t+=` ${fmt(c.left)} still to go.`;
+  return t;
+}
+function namedGoalsCard(compact){
+  const gs=S.goals||[];
+  if(!gs.length)return compact?'':`<section class="card" style="margin-bottom:16px"><div class="card-top"><h3>Savings goals</h3><button class="btn small primary" type="button" data-act="goalnew">New goal</button></div><p class="meta" style="margin:6px 0 0">Save for something specific, like a house, a car or a trip, with an amount and a date. Itemwise shows how much to put away each month.</p></section>`;
+  const sorted=gs.slice().sort((a,b)=>a.by<b.by?-1:1);
+  const rows=sorted.map(g=>{const c=goalCalc(g),chip=c.status==='done'?'<span class="chipstat good">Reached</span>':c.status==='on'?'<span class="chipstat good">On track</span>':c.status==='behind'||c.status==='late'?'<span class="chipstat bad">'+(c.status==='late'?'Past due':'Behind')+'</span>':'';
+    return `<div class="sgoal"><div class="ghead2"><b>${esc(g.name)}</b><span class="mono">${fmt(c.saved)} of ${fmt(g.target)}</span></div><div class="track" role="img" aria-label="${esc(g.name)}: ${fmt(c.saved)} of ${fmt(g.target)}"><div class="bg"><div class="fill" style="width:${c.pct}%"></div></div></div><p class="meta">${chip} ${esc(glStatusText(g,c))}</p><div class="actions" style="margin-top:8px"><button class="btn small" type="button" data-act="goalopen" data-id="${g.id}">Add money or edit</button></div></div>`}).join('');
+  return `<section class="card" style="margin-bottom:${compact?12:16}px"><div class="card-top"><h3>Savings goals</h3><button class="btn small" type="button" data-act="goalnew">New goal</button></div>${rows}</section>`;
+}
+function glPanelHTML(g){
+  const cats=S.cats.filter(c=>isSav(groupOf(c))),new_=!g;
+  const form=`${new_?`<div class="glpre" role="group" aria-label="Ideas">${GL_IDEAS.map(n=>`<button type="button" data-act="glpreset" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>`:''}
+   <div class="addgrid"><label>What are you saving for<input type="text" id="gl-name" value="${g?esc(g.name):''}" placeholder="House down payment" autocomplete="off"></label>
+   <label>Amount you need, in dollars<input type="number" min="0" step="50" id="gl-target" value="${g?g.target/100:''}" placeholder="0"></label>
+   <label>Reach it by<input type="date" id="gl-by" value="${g?g.by:ymAdd(todayKey,12)+'-01'}"></label>
+   <label>Already saved, in dollars<input type="number" min="0" step="50" id="gl-base" value="${g?(g.base||0)/100:0}"></label>
+   ${cats.length?`<label>Count money I file under<select id="gl-cat"><option value="">Nothing, I will add money myself</option>${cats.map(c=>`<option value="${esc(c)}"${g&&g.cat===c?' selected':''}>${esc(c)}</option>`).join('')}</select></label>`:''}</div>
+   ${cats.length?`<p class="meta" style="margin:0 0 8px">Pick a savings category and everything you file there from ${new_?'this month':monthLabel((g.from||'').slice(0,7)||curMonth)} on counts toward this goal. If two goals use the same category, both count it.</p>`:''}
+   <div class="actions"><button class="btn primary" type="button" data-act="glsave">${new_?'Create goal':'Save changes'}</button><button class="btn" type="button" data-act="panelclose">Cancel</button>${new_?'':`<button class="btn danger" type="button" data-act="gldel">Delete goal</button>`}</div>`;
+  if(new_)return form;
+  const c=goalCalc(g);
+  const adds=(g.adds||[]).map((a,i)=>({a,i})).sort((x,y)=>x.a.date<y.a.date?1:-1);
+  return `<div class="glsum"><div class="ghead2"><b>${fmt(c.saved)} of ${fmt(g.target)}</b><span class="meta">${fmt(c.left)} to go</span></div><div class="track" role="img" aria-label="${fmt(c.saved)} of ${fmt(g.target)}"><div class="bg"><div class="fill" style="width:${c.pct}%"></div></div></div><p class="meta" style="margin:6px 0 0">${esc(glStatusText(g,c))}${c.fromCat?` ${fmt(c.fromCat)} of your savings so far came from ${esc(g.cat)}.`:''}</p></div>
+   <div class="cadd"><b>Add money to this goal</b><div class="addgrid"><label>Date<input type="date" id="gl-ad-date" value="${todayISO}"></label><label>Amount, in dollars<input type="text" inputmode="decimal" id="gl-ad-amt" placeholder="0.00"></label><label>Note (optional)<input type="text" id="gl-ad-note" placeholder="Bonus" autocomplete="off"></label></div><div class="actions" style="margin-top:6px"><button class="btn small primary" type="button" data-act="gladd">Add money</button></div></div>
+   ${adds.length?`<div class="gladds"><div class="sub">Money added</div>${adds.map(({a,i})=>`<div class="incrow"><span>${fdl(a.date)}${a.note?' · '+esc(a.note):''} <b class="mono">${fmt(a.cents)}</b></span><button class="btn small ghost" type="button" data-act="gladdrm" data-i="${i}" aria-label="Remove ${fmt(a.cents)} added ${fdl(a.date)}">Remove</button></div>`).join('')}</div>`:''}
+   <div class="sub" style="margin-top:14px">Edit this goal</div>`+form;
+}
 /* ---------- Home hero, one-at-a-time review, quick add ---------- */
 let rvSkip=new Set(),rvAll=false,sheetOpen=false,sheetPrev=null;
 function goView(v){if(location.hash.slice(1)===v){view=v;closeEditor();render()}else location.hash='#'+v}
@@ -2435,6 +2534,39 @@ document.addEventListener('click',e=>{
     case 'cdelyes':normGroups();deleteCat(b.dataset.name);break;
     case 'cdelno':delAsk=null;render();break;
     case 'goaledit':goalEdit=b.dataset.name;render();break;
+    case 'goalnew':goalPanel='new';yearOpen=false;openCats=new Set();if(view!=='budgets')location.hash='budgets';else render();break;
+    case 'goalopen':goalPanel=id;yearOpen=false;openCats=new Set();if(view!=='budgets')location.hash='budgets';else render();break;
+    case 'glpreset':{const el=$('#gl-name');if(el)el.value=b.dataset.n;break}
+    case 'glsave':{
+      const nm=($('#gl-name').value||'').trim(),tg=parseMoney($('#gl-target').value),by=$('#gl-by').value,base=$('#gl-base').value===''?0:parseMoney($('#gl-base').value),ce=$('#gl-cat'),cat=ce?ce.value:'';
+      if(!nm){toast('Give the goal a name, like House down payment.');break}
+      if(!(tg>0)){toast('Enter how much you need.');break}
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(by)){toast('Pick the date you want to reach it by.');break}
+      if(Number.isNaN(base)||base<0){toast('Enter what is already saved, or leave it at 0.');break}
+      const snap=snapshot();S.goals=S.goals||[];
+      if(goalPanel==='new'){S.goals.push({id:++S.seq,name:nm,target:tg,by,base,cat,from:curMonth+'-01',adds:[]})}
+      else{const g=S.goals.find(x=>x.id===goalPanel);if(!g)break;g.name=nm;g.target=tg;g.by=by;g.base=base;if(g.cat!==cat){g.cat=cat;g.from=curMonth+'-01'}}
+      const wasNew=goalPanel==='new';goalPanel=null;commit();toast(wasNew?`Goal created: ${nm}.`:'Goal saved.',snap);break}
+    case 'gladd':{
+      const g=(S.goals||[]).find(x=>x.id===goalPanel);if(!g)break;
+      const dt=$('#gl-ad-date').value,v=parseMoney($('#gl-ad-amt').value),note=($('#gl-ad-note').value||'').trim();
+      if(!(v>0)){toast('Enter an amount like 250.');break}
+      if(!/^\d{4}-\d{2}-\d{2}$/.test(dt)){toast('Pick a date.');break}
+      const snap=snapshot();g.adds=g.adds||[];g.adds.push({date:dt,cents:v,note});commit();toast(`Added ${fmt(v)} to ${g.name}.`,snap);break}
+    case 'gladdrm':{const g=(S.goals||[]).find(x=>x.id===goalPanel),i=+b.dataset.i;if(g&&g.adds&&g.adds[i]){const snap=snapshot(),a=g.adds.splice(i,1)[0];commit();toast(`Removed ${fmt(a.cents)}.`,snap)}break}
+    case 'gldel':{const g=(S.goals||[]).find(x=>x.id===goalPanel);if(g){const snap=snapshot();S.goals=S.goals.filter(x=>x!==g);goalPanel=null;commit();toast(`Deleted ${g.name}.`,snap)}break}
+    case 'yearopen':yearOpen=true;yearY=0;openCats=new Set();if(view!=='budgets')location.hash='budgets';else render();break;
+    case 'yeary':yearY=+b.dataset.y;render();break;
+    case 'yearfill':{const el=$('#y-'+b.dataset.i);if(el){el.value=(+b.dataset.v)/100;el.dispatchEvent(new Event('input',{bubbles:true}))}break}
+    case 'yearskip':S.yearDone=defYear();save();render();break;
+    case 'yearsave':{
+      const Y=yearY||defYear(),cats=S.cats.filter(c=>isSav(groupOf(c))),set=[];
+      let badC=null;for(let i=0;i<cats.length&&!badC;i++){const el=$('#y-'+i);if(!el||el.value.trim()==='')continue;const v=parseMoney(el.value);if(!(v>0))badC=cats[i];else set.push([cats[i],v])}
+      if(badC){toast('Enter an amount like 5000, or leave '+badC+' blank.');break}
+      if(!set.length){toast('Enter a goal for at least one category.');break}
+      const snap=snapshot();S.track=S.track||{};
+      set.forEach(([c,v])=>{const tr=S.track[c]=S.track[c]||{};tr.goal={target:v,by:Y+'-12',base:0,from:Y+'-01'}});
+      S.yearDone=Y;yearOpen=false;commit();toast(`Saved ${set.length} goal${set.length===1?'':'s'} for ${Y}.`,snap);break}
     case 'goalcancel':goalEdit=null;render();break;
     case 'goalrm':{const n=b.dataset.name,tr=(S.track||{})[n];if(tr){delete tr.goal;if(!tr.roll)delete S.track[n]}goalEdit=null;commit();break}
     case 'goalsave':{
